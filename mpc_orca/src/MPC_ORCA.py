@@ -59,7 +59,7 @@ class MPC_ORCA:
         # MPC objective function
         Q = sparse.diags([1., 1., 0., 0.])
         Q_n = Q
-        R = sparse.eye(self.nu)
+        R = 0.1*sparse.eye(self.nu)
 
         # Casting QP format
         # QP objective

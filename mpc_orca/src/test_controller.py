@@ -27,7 +27,7 @@ sub_0 = rospy.Subscriber('/odom', Odometry, callback_0)
 pub_0 = rospy.Publisher('/cmd_vel', Twist, queue_size=10)
 t = 0
 
-controller = MPC_ORCA(goal[0], X[0], 0., V_max[0], 10, Ts)
+controller = MPC_ORCA(goal[0], X[0], -V_max[0], V_max[0], 10, Ts)
 
 while not rospy.is_shutdown():
     
@@ -43,6 +43,6 @@ while not rospy.is_shutdown():
     
     if t%100:
         print(velocity)
-        #print(agents[0].velocity)
+        print(X[0])
     t += 1
     rospy.sleep(Ts)
