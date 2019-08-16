@@ -4,7 +4,7 @@ import scipy.sparse as sparse
 
 class MPC_ORCA:
 
-    def __init__(self, goal, position, v_min, v_max, N, Ts):
+    def __init__(self, goal, position, v_min, v_max, N, Ts, n_colliders = 0):
         """ MPC-ORCA controller instance
         
         :param goal: Goal position
@@ -70,33 +70,41 @@ class MPC_ORCA:
         # - linear dynamics
         Ax = sparse.kron(sparse.eye(N+1),-sparse.eye(self.nx)) + sparse.kron(sparse.eye(N+1, k=-1), Ad)
         Bu = sparse.kron(sparse.vstack([sparse.csc_matrix((1, N)), sparse.eye(N)]), Bd)
-        Aeq = sparse.hstack([Ax, Bu])
-        leq = numpy.hstack([-x0, numpy.zeros(N*self.nx)])
-        ueq = leq
+        A_eq = sparse.hstack([Ax, Bu])
+        l_eq = numpy.hstack([-x0, numpy.zeros(N*self.nx)])
+        u_eq = l_eq
 
         # - input and state constraints
-        Aineq = sparse.eye((N+1) * self.nx + N * self.nu)
-        self.lineq = numpy.hstack([numpy.kron(numpy.ones(N+1), xmin), numpy.kron(numpy.ones(N), umin)])
-        self.uineq = numpy.hstack([numpy.kron(numpy.ones(N+1), xmax), numpy.kron(numpy.ones(N), umax)])
+        A_ineq = sparse.eye((N+1) * self.nx + N * self.nu)
+        l_ineq = numpy.hstack([numpy.kron(numpy.ones(N+1), xmin), numpy.kron(numpy.ones(N), umin)])
+        u_ineq = numpy.hstack([numpy.kron(numpy.ones(N+1), xmax), numpy.kron(numpy.ones(N), umax)])
         
-        # - OSQP constraints
-        A = sparse.vstack([Aeq, Aineq]).tocsc()
-        l = numpy.hstack([leq, self.lineq])
-        u = numpy.hstack([ueq, self.uineq])
+        # ORCA Constraints
+        A_ORCA = sparse.csc_matrix((n_colliders, A_eq.shape[1]))
+        l_ORCA = numpy.zeros(n_colliders)
+        u_ORCA = numpy.zeros(n_colliders)
+
+        # OSQP constraints
+        self.A = sparse.vstack([A_eq, A_ineq, A_ORCA]).tocsc()
+        self.l = numpy.hstack([l_eq, l_ineq, l_ORCA])
+        self.u = numpy.hstack([u_eq, u_ineq, u_ORCA])
 
         # Setting problem
         self.problem = osqp.OSQP()
-        self.problem.setup(P, q, A, l, u, warm_start=True)
+        self.problem.setup(P, q, self.A, self.l, self.u, warm_start=True)
+
+        # Saving non-ORCA A rows size for ORCA constraints updates
+        rows_eq = (self.N + 1) * self.nx
+        rows_ineq = (self.N + 1) * self.nx + self.N * self.nu
+        self.rows_A = rows_eq + rows_ineq
 
     def getNewAcceleration(self, position, velocity):
         x0 = numpy.array([position[0], position[1], velocity[0], velocity[1]])
-        leq = numpy.hstack([-x0, numpy.zeros(self.N * self.nx)])
-        ueq = leq
+        
+        self.l[:self.nx] = -x0
+        self.u[:self.nx] = -x0
 
-        l_new = numpy.hstack([leq, self.lineq])
-        u_new = numpy.hstack([ueq, self.uineq])
-
-        self.problem.update(l=l_new, u=u_new)
+        self.problem.update(l=self.l, u=self.u)
         result = self.problem.solve()
 
         # return the first control input

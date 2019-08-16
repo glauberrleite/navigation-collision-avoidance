@@ -27,7 +27,7 @@ import numpy
 from numpy import array, sqrt, copysign, dot
 from numpy.linalg import det
 
-from halfplaneintersect import halfplane_optimize, Line, perp
+from halfplaneintersect import halfplane_optimize, Line
 
 # Method:
 # For each robot A and potentially colliding robot B, compute smallest change
@@ -158,3 +158,6 @@ def normalized(x):
 
 def dist_sq(a, b):
     return norm_sq(b - a)
+
+def perp(a):
+    return array((a[1], -a[0]))

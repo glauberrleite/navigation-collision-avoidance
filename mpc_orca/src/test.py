@@ -34,7 +34,7 @@ RADIUS = 1.0
 
 agents = []
 
-X = [(-15, 0.5), (15, 0), (0.00, 15), (-0.5, -15)]
+X = [(-15, 0), (15, 0.5), (0.00, 15), (-0.5, -15)]
 V = [(0.0, 0.0) for _ in xrange(len(X))]
 V_max = [5.0 for _ in xrange(len(X))]
 goal = [(15.0, 0.0), (-15.0, 0.0), (0.0, -15.0), (0.0, 15.0)]
@@ -124,7 +124,7 @@ while running:
         # Draw normal to ORCA line
         gamma = agents[0].position + line.point
         delta = agents[0].position + line.point + line.direction
-        #pygame.draw.line(screen, (255, 255, 255), rint(gamma * scale + O).astype(int), rint(delta * scale + O).astype(int), 1)
+        pygame.draw.line(screen, (255, 255, 255), rint(gamma * scale + O).astype(int), rint(delta * scale + O).astype(int), 1)
 
     pygame.display.flip()
 
