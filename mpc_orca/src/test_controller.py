@@ -6,7 +6,7 @@ from nav_msgs.msg import Odometry
 from geometry_msgs.msg import Twist
 from MPC_ORCA import MPC_ORCA
 
-N_AGENTS = 4
+N_AGENTS = 0
 RADIUS = 0.7
 tau = 5
 

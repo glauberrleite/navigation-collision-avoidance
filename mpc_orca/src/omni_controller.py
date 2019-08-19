@@ -5,31 +5,30 @@ import sys
 import numpy
 from nav_msgs.msg import Odometry
 from geometry_msgs.msg import Twist
-from pyorca import Agent, get_avoidance_velocity, orca, normalized, perp
+from MPC_ORCA import MPC_ORCA
+from pyorca import Agent
 
-N_AGENTS = 4
 RADIUS = 0.7
 tau = 5
 
+N = 2
 Ts = 0.1
-X = [(-5, 0.25), (5, 0), (0.00, 5), (-0.25, -5)]
-V = [(0, 0) for _ in xrange(len(X))]
+X = [[-5., 0.], [5., 0.], [0.0, 5.], [0., -5.]]
+#X = [[-5., 0.0], [0., 5.]]
+V = [[0., 0.] for _ in xrange(len(X))]
+V_min = [-1.0 for _ in xrange(len(X))]
 V_max = [1.0 for _ in xrange(len(X))]
-goal = [(5.0, 0.0), (-5.0, 0.0), (0.0, -5.0), (0.0, 5.0)]
+#goal = [[5.0, 0.0], [-5.0, 0.0], [0.0, -5.0], [0.0, 5.0]]
+goal = [[5., 0.], [-5.0, 0.], [0.0, 5.], [0., -5.]]
 
 agents = []
 
 for i in xrange(len(X)):
-        vel = (numpy.array(goal[i]) - numpy.array(X[i]))
-        if numpy.linalg.norm(vel) > V_max[i]:
-            vel = normalized(vel) * V_max[i]
-        agents.append(Agent(X[i], (0., 0.), RADIUS, V_max[i], vel))
+    agents.append(Agent(X[i], [0., 0.], RADIUS))
 
-def update_agents(agents):
-    for i in xrange(len(X)):        
-        agents[i].pref_velocity = (numpy.array(goal[i]) - numpy.array(X[i]))
-        if numpy.linalg.norm(agents[i].pref_velocity) > V_max[i]:
-            agents[i].pref_velocity = normalized(agents[i].pref_velocity) * V_max[i]
+def update_positions(agents):
+    for i in xrange(len(X)):
+        agents[i].position = numpy.array(X[i])
     return agents
 
 def callback_0(msg):
@@ -46,20 +45,32 @@ rospy.init_node('omni_controller')
 
 sub_0 = rospy.Subscriber('/robot_0/odom', Odometry, callback_0)
 sub_1 = rospy.Subscriber('/robot_1/odom', Odometry, callback_1)
+#sub_1 = rospy.Subscriber('/robot_2/odom', Odometry, callback_1)
 sub_2 = rospy.Subscriber('/robot_2/odom', Odometry, callback_2)
 sub_3 = rospy.Subscriber('/robot_3/odom', Odometry, callback_3)
 pub_0 = rospy.Publisher('/robot_0/cmd_vel', Twist, queue_size=10)
 pub_1 = rospy.Publisher('/robot_1/cmd_vel', Twist, queue_size=10)
+#pub_1 = rospy.Publisher('/robot_2/cmd_vel', Twist, queue_size=10)
 pub_2 = rospy.Publisher('/robot_2/cmd_vel', Twist, queue_size=10)
 pub_3 = rospy.Publisher('/robot_3/cmd_vel', Twist, queue_size=10)
 t = 0
 
-while not rospy.is_shutdown():
-    agents = update_agents(agents)
-    for i, agent in enumerate(agents):
-        candidates = agents[:i] + agents[i + 1:]
-        agent.velocity, _ = orca(agent, candidates, tau, Ts)
+# Initializing Controllers
+controller = []
+for i, agent in enumerate(agents):
+    colliders = agents[:i] + agents[i + 1:]
+    controller.append(MPC_ORCA(goal[i], agent.position, V_min[i], V_max[i], N, Ts, colliders, tau, agent.radius))
 
+while not rospy.is_shutdown():
+    
+    agents = update_positions(agents)
+
+    for i, agent in enumerate(agents):
+        controller[i].agent = agents[i]
+        controller[i].colliders = agents[:i] + agents[i + 1:]
+        agents[i].velocity = controller[i].getNewVelocity()
+
+    #print(agents[1].velocity)
     vel_0 = Twist()
     vel_0.linear.x = agents[0].velocity[0]
     vel_0.linear.y = agents[0].velocity[1]
@@ -67,7 +78,7 @@ while not rospy.is_shutdown():
     vel_1 = Twist()
     vel_1.linear.x = agents[1].velocity[0]
     vel_1.linear.y = agents[1].velocity[1]
-    
+
     vel_2 = Twist()
     vel_2.linear.x = agents[2].velocity[0]
     vel_2.linear.y = agents[2].velocity[1]

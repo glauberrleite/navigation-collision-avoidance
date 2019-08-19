@@ -18,6 +18,8 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 
+# Adapted by @glauberrleite
+
 """Implementation of the 2D ORCA algorithm as described by J. van der Berg,
 S. J. Guy, M. Lin and D. Manocha in 'Reciprocal n-body Collision Avoidance'."""
 
@@ -26,8 +28,6 @@ from __future__ import division
 import numpy
 from numpy import array, sqrt, copysign, dot
 from numpy.linalg import det
-
-from halfplaneintersect import halfplane_optimize, Line
 
 # Method:
 # For each robot A and potentially colliding robot B, compute smallest change
@@ -38,25 +38,21 @@ from halfplaneintersect import halfplane_optimize, Line
 
 class Agent(object):
     """A disk-shaped agent."""
-    def __init__(self, position, velocity, radius, max_speed, pref_velocity):
+    def __init__(self, position, velocity, radius):
         super(Agent, self).__init__()
         self.position = array(position)
         self.velocity = array(velocity)
         self.radius = radius
-        self.max_speed = max_speed
-        self.pref_velocity = array(pref_velocity)
 
 
-def orca(agent, colliding_agents, t, dt):
+def orca(agent, colliding_agent, t, dt):
     """Compute ORCA solution for agent. NOTE: velocity must be _instantly_
     changed on tick *edge*, like first-order integration, otherwise the method
     undercompensates and you will still risk colliding."""
-    lines = []
-    for collider in colliding_agents:
-        dv, n = get_avoidance_velocity(agent, collider, t, dt)
-        line = Line(agent.velocity + dv / 2, n)
-        lines.append(line)
-    return halfplane_optimize(lines, agent.pref_velocity), lines
+    dv, n = get_avoidance_velocity(agent, colliding_agent, t, dt)
+    v0 = agent.velocity + dv / 2
+
+    return v0, n
 
 def get_avoidance_velocity(agent, collider, t, dt):
     """Get the smallest relative change in velocity between agent and collider
@@ -146,7 +142,7 @@ def get_avoidance_velocity(agent, collider, t, dt):
         w = v - x/dt
         u = normalized(w) * r/dt - w
         n = normalized(w)
-    return u, n
+    return u, -n
 
 def norm_sq(x):
     return dot(x, x)

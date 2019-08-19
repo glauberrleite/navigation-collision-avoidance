@@ -1,10 +1,11 @@
 import osqp
 import numpy
 import scipy.sparse as sparse
+from pyorca import Agent, orca
 
 class MPC_ORCA:
 
-    def __init__(self, goal, position, v_min, v_max, N, Ts, n_colliders = 0):
+    def __init__(self, goal, position, v_min, v_max, N, Ts, colliders, tau, robot_radius):
         """ MPC-ORCA controller instance
         
         :param goal: Goal position
@@ -25,6 +26,10 @@ class MPC_ORCA:
 
         self.N = N
         self.Ts = Ts
+        self.tau = tau
+
+        self.agent = Agent(position, [0., 0.], robot_radius)
+        self.colliders = colliders
 
         # Linear Dynamics
         # x = [p_x, p_y, v_x, v_y]'
@@ -79,10 +84,25 @@ class MPC_ORCA:
         l_ineq = numpy.hstack([numpy.kron(numpy.ones(N+1), xmin), numpy.kron(numpy.ones(N), umin)])
         u_ineq = numpy.hstack([numpy.kron(numpy.ones(N+1), xmax), numpy.kron(numpy.ones(N), umax)])
         
+        # Saving where ORCA rows start on A, l and u matrices
+        rows_eq = (self.N + 1) * self.nx
+        rows_ineq = (self.N + 1) * self.nx + self.N * self.nu
+        self.orca_rows = rows_eq + rows_ineq
+
         # ORCA Constraints
-        A_ORCA = sparse.csc_matrix((n_colliders, A_eq.shape[1]))
-        l_ORCA = numpy.zeros(n_colliders)
-        u_ORCA = numpy.zeros(n_colliders)
+        A_ORCA_data = numpy.zeros(2 * len(self.colliders) * self.N)
+        A_ORCA_rows = numpy.zeros(2 * len(self.colliders) * self.N)
+        A_ORCA_cols = numpy.zeros(2 * len(self.colliders) * self.N)
+        for k in range(N):
+            for i in range(len(colliders)):
+                A_ORCA_rows[i * N + 2 * k] = i * N + k
+                A_ORCA_cols[i * N + 2 * k] = self.nx + k * self.nx + 2
+
+                A_ORCA_rows[i * N + 2 * k + 1] = i * N + k
+                A_ORCA_cols[i * N + 2 * k + 1] = self.nx + k * self.nx + 3
+        A_ORCA = sparse.csc_matrix((A_ORCA_data, (A_ORCA_rows, A_ORCA_cols)), shape=(len(colliders) * N, A_eq.shape[1]))
+        l_ORCA = numpy.zeros(len(colliders) * N)
+        u_ORCA = numpy.zeros(len(colliders) * N)
 
         # OSQP constraints
         self.A = sparse.vstack([A_eq, A_ineq, A_ORCA]).tocsc()
@@ -93,19 +113,45 @@ class MPC_ORCA:
         self.problem = osqp.OSQP()
         self.problem.setup(P, q, self.A, self.l, self.u, warm_start=True)
 
-        # Saving non-ORCA A rows size for ORCA constraints updates
-        rows_eq = (self.N + 1) * self.nx
-        rows_ineq = (self.N + 1) * self.nx + self.N * self.nu
-        self.rows_A = rows_eq + rows_ineq
-
-    def getNewAcceleration(self, position, velocity):
-        x0 = numpy.array([position[0], position[1], velocity[0], velocity[1]])
+    def getNewVelocity(self):
+        # Updating initial conditions
+        x0 = numpy.array([self.agent.position[0], self.agent.position[1], self.agent.velocity[0], self.agent.velocity[1]])
         
         self.l[:self.nx] = -x0
         self.u[:self.nx] = -x0
 
-        self.problem.update(l=self.l, u=self.u)
+        A_new_data = numpy.zeros(2 * len(self.colliders) * self.N)
+        A_new_idx = numpy.zeros(((2 * len(self.colliders) * self.N), 2))
+
+        # Predict future states with constant velocity, i.e. no acceleration
+        for k in range(self.N):
+            agent_k = Agent(self.agent.position + k * self.agent.velocity * self.Ts, self.agent.velocity, self.agent.radius)
+
+            for i, collider in enumerate(self.colliders):    
+                collider_k = Agent(collider.position + k * collider.velocity * self.Ts, collider.velocity, collider.radius)
+
+                # Dicovering ORCA half-space
+                v0, n = orca(agent_k, collider_k, self.tau, self.Ts)
+
+                A_new_idx[k * len(self.colliders) + 2 * i, 0] = self.orca_rows + i * self.N + k
+                A_new_idx[k * len(self.colliders) + 2 * i, 1] = (self.nx + k * self.nx + 2)
+                A_new_data[k * len(self.colliders) + 2 * i] = n[0]
+
+                A_new_idx[k * len(self.colliders) + 2 * i + 1, 0] = self.orca_rows + i * self.N + k
+                A_new_idx[k * len(self.colliders) + 2 * i + 1, 1] = (self.nx + k * self.nx + 3)
+                A_new_data[k * len(self.colliders) + 2 * i + 1] = n[1]
+                #self.A[self.orca_rows + i * self.N + k, (self.nx + k * self.nx + 2)] = n[0]
+                #self.A[self.orca_rows + i * self.N + k, (self.nx + k * self.nx + 3)] = n[1]
+                self.l[self.orca_rows + i * self.N + k] = -numpy.inf
+                self.u[self.orca_rows + i * self.N + k] = numpy.dot(n, v0)
+                #self.u[self.orca_rows + i * self.N + k] = numpy.inf
+                #self.l[self.orca_rows + i * self.N + k] = numpy.dot(n, v0)
+                
+
+        self.problem.update(l=self.l, u=self.u, Ax=A_new_data, Ax_idx=A_new_idx)
+        #self.problem.update(l=self.l, u=self.u)
         result = self.problem.solve()
 
-        # return the first control input
-        return result.x[(-self.N*self.nu):(-(self.N-1)*self.nu)]
+        # return the first resulting velocity after control action
+        return result.x[(self.nx + 2):(self.nx + 4)]
+    
