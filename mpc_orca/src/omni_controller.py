@@ -8,18 +8,16 @@ from geometry_msgs.msg import Twist
 from MPC_ORCA import MPC_ORCA
 from pyorca import Agent
 
-RADIUS = 0.7
+RADIUS = 0.5
 tau = 5
 
-N = 2
+N = 10
 Ts = 0.1
 X = [[-5., 0.], [5., 0.], [0.0, 5.], [0., -5.]]
-#X = [[-5., 0.0], [0., 5.]]
 V = [[0., 0.] for _ in xrange(len(X))]
 V_min = [-1.0 for _ in xrange(len(X))]
 V_max = [1.0 for _ in xrange(len(X))]
-#goal = [[5.0, 0.0], [-5.0, 0.0], [0.0, -5.0], [0.0, 5.0]]
-goal = [[5., 0.], [-5.0, 0.], [0.0, 5.], [0., -5.]]
+goal = [[5.0, 0.0], [-5.0, 0.0], [0.0, -5.0], [0.0, 5.0]]
 
 agents = []
 
@@ -93,7 +91,8 @@ while not rospy.is_shutdown():
     pub_3.publish(vel_3)
 
     if t%100:
-        print(X)
+        pass
+        #print(X)
         #print(agents[0].velocity)
     t += 1
     rospy.sleep(Ts)
