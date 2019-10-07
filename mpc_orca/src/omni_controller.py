@@ -43,12 +43,10 @@ rospy.init_node('omni_controller')
 
 sub_0 = rospy.Subscriber('/robot_0/odom', Odometry, callback_0)
 sub_1 = rospy.Subscriber('/robot_1/odom', Odometry, callback_1)
-#sub_1 = rospy.Subscriber('/robot_2/odom', Odometry, callback_1)
 sub_2 = rospy.Subscriber('/robot_2/odom', Odometry, callback_2)
 sub_3 = rospy.Subscriber('/robot_3/odom', Odometry, callback_3)
 pub_0 = rospy.Publisher('/robot_0/cmd_vel', Twist, queue_size=10)
 pub_1 = rospy.Publisher('/robot_1/cmd_vel', Twist, queue_size=10)
-#pub_1 = rospy.Publisher('/robot_2/cmd_vel', Twist, queue_size=10)
 pub_2 = rospy.Publisher('/robot_2/cmd_vel', Twist, queue_size=10)
 pub_3 = rospy.Publisher('/robot_3/cmd_vel', Twist, queue_size=10)
 t = 0
@@ -68,7 +66,6 @@ while not rospy.is_shutdown():
         controller[i].colliders = agents[:i] + agents[i + 1:]
         agents[i].velocity = controller[i].getNewVelocity()
 
-    #print(agents[1].velocity)
     vel_0 = Twist()
     vel_0.linear.x = agents[0].velocity[0]
     vel_0.linear.y = agents[0].velocity[1]
@@ -91,8 +88,6 @@ while not rospy.is_shutdown():
     pub_3.publish(vel_3)
 
     if t%100:
-        pass
-        #print(X)
-        #print(agents[0].velocity)
+        print(X)
     t += 1
     rospy.sleep(Ts)

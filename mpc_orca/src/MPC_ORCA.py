@@ -1,6 +1,9 @@
 import osqp
 import numpy
 import scipy.sparse as sparse
+import warnings
+warnings.filterwarnings("error")
+from scipy.sparse import SparseEfficiencyWarning
 from pyorca import Agent, orca
 
 class MPC_ORCA:
@@ -88,13 +91,15 @@ class MPC_ORCA:
         A_ORCA_data = numpy.zeros(2 * len(self.colliders) * self.N)
         A_ORCA_rows = numpy.zeros(2 * len(self.colliders) * self.N)
         A_ORCA_cols = numpy.zeros(2 * len(self.colliders) * self.N)
+        cnt = 0
         for k in range(N):
             for i in range(len(colliders)):
-                A_ORCA_rows[i * N + 2 * k] = i * N + k
-                A_ORCA_cols[i * N + 2 * k] = self.nx + k * self.nx + 2
+                A_ORCA_rows[cnt] = i * N + k
+                A_ORCA_cols[cnt] = self.nx + k * self.nx + 2
 
-                A_ORCA_rows[i * N + 2 * k + 1] = i * N + k
-                A_ORCA_cols[i * N + 2 * k + 1] = self.nx + k * self.nx + 3
+                A_ORCA_rows[cnt + 1] = i * N + k
+                A_ORCA_cols[cnt + 1] = self.nx + k * self.nx + 3
+                cnt += 2
         A_ORCA = sparse.csc_matrix((A_ORCA_data, (A_ORCA_rows, A_ORCA_cols)), shape=(len(colliders) * N, A_eq.shape[1]))
         l_ORCA = numpy.zeros(len(colliders) * N)
         u_ORCA = numpy.zeros(len(colliders) * N)
@@ -105,19 +110,6 @@ class MPC_ORCA:
         self.u = numpy.hstack([u_eq, u_ineq, u_ORCA])
 
         self.orca_rows_idx = A_eq.shape[0] + A_ineq.shape[0]
-
-        #self.A = sparse.vstack([A_eq, A_ineq]).tocsc()
-        #self.l = numpy.hstack([l_eq, l_ineq])
-        #self.u = numpy.hstack([u_eq, u_ineq])
-        self.A_eq = A_eq
-        self.l_eq = l_eq
-        self.u_eq = u_eq
-        self.A_ineq = A_ineq
-        self.l_ineq = l_ineq
-        self.u_ineq = u_ineq
-
-        self.P = P
-        self.q = q
 
         # Setting problem
         self.problem = osqp.OSQP()
@@ -130,12 +122,6 @@ class MPC_ORCA:
         self.l[:self.nx] = -x0
         self.u[:self.nx] = -x0
 
-        #A_ORCA_data = numpy.zeros(2 * len(self.colliders) * self.N)
-        #A_ORCA_rows = numpy.zeros(2 * len(self.colliders) * self.N)
-        #A_ORCA_cols = numpy.zeros(2 * len(self.colliders) * self.N)
-        #l_ORCA = numpy.zeros(len(self.colliders) * self.N)
-        #u_ORCA = numpy.zeros(len(self.colliders) * self.N)
-
         # Predict future states with constant velocity, i.e. no acceleration
         for k in range(self.N):
             agent_k = Agent(self.agent.position + k * self.agent.velocity * self.Ts, self.agent.velocity, self.agent.radius)
@@ -146,34 +132,12 @@ class MPC_ORCA:
                 # Dicovering ORCA half-space
                 v0, n = orca(agent_k, collider_k, self.tau, self.Ts)
 
-                #A_ORCA_rows[k * len(self.colliders) + 2 * i] = i * self.N + k
-                #A_ORCA_cols[k * len(self.colliders) + 2 * i] = (self.nx + k * self.nx + 2)
-                #A_ORCA_data[k * len(self.colliders) + 2 * i] = n[0]
-
-                #A_ORCA_rows[k * len(self.colliders) + 2 * i + 1] = i * self.N + k
-                #A_ORCA_cols[k * len(self.colliders) + 2 * i + 1] = (self.nx + k * self.nx + 3)
-                #A_ORCA_data[k * len(self.colliders) + 2 * i + 1] = n[1]
-                
-                #l_ORCA[i * self.N + k] = -numpy.inf
-                #u_ORCA[i * self.N + k] = numpy.dot(n, v0)
-
                 self.A[self.orca_rows_idx + i * self.N + k, self.nx + k * self.nx + 2] = n[0]
                 self.A[self.orca_rows_idx + i * self.N + k, self.nx + k * self.nx + 3] = n[1]
 
                 self.l[self.orca_rows_idx + i * self.N + k] = -numpy.inf
                 self.u[self.orca_rows_idx + i * self.N + k] = numpy.dot(n, v0)
                 
-
-        #A_ORCA = sparse.csc_matrix((A_ORCA_data, (A_ORCA_rows, A_ORCA_cols)), shape=(len(self.colliders) * self.N, self.A_eq.shape[1]))
-        #A = sparse.vstack([self.A_eq, self.A_ineq, A_ORCA]).tocsc()
-        #l = numpy.hstack([self.l_eq, self.l_ineq, l_ORCA])
-        #u = numpy.hstack([self.u_eq, self.u_ineq, u_ORCA])
-
-        #l[:self.nx] = -x0
-        #u[:self.nx] = -x0
-
-        #problem = osqp.OSQP()
-        #problem.setup(self.P, self.q, A, l, u, warm_start=True, verbose=False)
 
         self.problem.update(l=self.l, u=self.u, Ax=self.A.data)
         result = self.problem.solve()
@@ -182,7 +146,6 @@ class MPC_ORCA:
             # return the first resulting velocity after control action
             return result.x[(self.nx + 2):(self.nx + 4)]
         else:
-            #print("No solution")
             return numpy.array([self.agent.velocity[0], self.agent.velocity[1]])
         
     
