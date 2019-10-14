@@ -1,6 +1,6 @@
 define robot position (
 	origin [0 0 0 0]
-	drive "omni"
+	drive "diff"
 	bitmap "circle.png"
 )
 
@@ -22,8 +22,19 @@ robot (
 )
 
 robot (
-	pose [ 5 0 0 0]
+	pose [ 5 0 0 180]
 	name "r1"
 	color "red"
 )
 
+robot (
+	pose [ 0 5 0 270]
+	name "r2"
+	color "black"
+)
+
+robot (
+	pose [0 -5 0 90]
+	name "r3"
+	color "pink"
+)

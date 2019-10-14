@@ -66,13 +66,12 @@ class MPC_ORCA:
 
         # MPC objective function
         Q = sparse.diags([1., 1., 0., 0.])
-        Q_n = Q
         R = 0.01 * sparse.eye(self.nu)
 
         # Casting QP format
         # QP objective
-        P = sparse.block_diag([sparse.kron(sparse.eye(N), Q), Q_n, sparse.kron(sparse.eye(N), R)]).tocsc()
-        q = numpy.hstack([numpy.kron(numpy.ones(N), -Q.dot(x_r)), -Q_n.dot(x_r), numpy.zeros(N * self.nu)])
+        P = sparse.block_diag([sparse.kron(sparse.eye(N+1), Q), sparse.kron(sparse.eye(N), R)]).tocsc()
+        q = numpy.hstack([numpy.kron(numpy.ones(N+1), -Q.dot(x_r)), numpy.zeros(N * self.nu)])
 
         # QP constraints
         # - linear dynamics
