@@ -1,7 +1,6 @@
 #!/usr/bin/env python2
 
 import rospy
-import sys
 import numpy
 from nav_msgs.msg import Odometry
 from geometry_msgs.msg import Twist

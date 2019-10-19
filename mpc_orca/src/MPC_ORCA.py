@@ -1,9 +1,6 @@
 import osqp
 import numpy
 import scipy.sparse as sparse
-import warnings
-warnings.filterwarnings("error")
-from scipy.sparse import SparseEfficiencyWarning
 from pyorca import Agent, orca
 
 class MPC_ORCA:
@@ -66,12 +63,13 @@ class MPC_ORCA:
 
         # MPC objective function
         Q = sparse.diags([1., 1., 0., 0.])
-        R = 0.01 * sparse.eye(self.nu)
+        Q_n = sparse.diags([1., 1., 10., 10.])
+        R = 0.2 * sparse.eye(self.nu)
 
         # Casting QP format
         # QP objective
-        P = sparse.block_diag([sparse.kron(sparse.eye(N+1), Q), sparse.kron(sparse.eye(N), R)]).tocsc()
-        q = numpy.hstack([numpy.kron(numpy.ones(N+1), -Q.dot(x_r)), numpy.zeros(N * self.nu)])
+        P = sparse.block_diag([sparse.kron(sparse.eye(N), Q), Q_n, sparse.kron(sparse.eye(N), R)]).tocsc()
+        q = numpy.hstack([numpy.kron(numpy.ones(N), -Q.dot(x_r)), -Q_n.dot(x_r), numpy.zeros(N * self.nu)])
 
         # QP constraints
         # - linear dynamics

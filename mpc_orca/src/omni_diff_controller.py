@@ -32,23 +32,15 @@ def update_positions(agents):
 def callback_0(msg):
     X[0] = (float(msg.pose.pose.position.x), float(msg.pose.pose.position.y))
     orientation[0] = 2 * np.arctan2(float(msg.pose.pose.orientation.z), float(msg.pose.pose.orientation.w))
-    if np.abs(orientation[0]) > np.pi:
-        orientation[0] = orientation[0] - np.sign(orientation[0]) * 2 * np.pi
 def callback_1(msg):
     X[1] = (float(msg.pose.pose.position.x), float(msg.pose.pose.position.y))
     orientation[1] = 2 * np.arctan2(float(msg.pose.pose.orientation.z), float(msg.pose.pose.orientation.w))
-    if np.abs(orientation[1]) > np.pi:
-        orientation[1] = orientation[1] - np.sign(orientation[1]) * 2 * np.pi
 def callback_2(msg):
     X[2] = (float(msg.pose.pose.position.x), float(msg.pose.pose.position.y))
     orientation[2] = 2 * np.arctan2(float(msg.pose.pose.orientation.z), float(msg.pose.pose.orientation.w))
-    if np.abs(orientation[2]) > np.pi:
-        orientation[2] = orientation[2] - np.sign(orientation[2]) * 2 * np.pi
 def callback_3(msg):
     X[3] = (float(msg.pose.pose.position.x), float(msg.pose.pose.position.y))
     orientation[3] = 2 * np.arctan2(float(msg.pose.pose.orientation.z), float(msg.pose.pose.orientation.w))
-    if np.abs(orientation[3]) > np.pi:
-        orientation[3] = orientation[3] - np.sign(orientation[3]) * 2 * np.pi
 
 
 rospy.init_node('omni_controller')
@@ -80,7 +72,7 @@ while not rospy.is_shutdown():
 
     vel_0 = Twist()
     
-    angular_vel_0 = (np.arctan2(agents[0].velocity[1], agents[0].velocity[0]) - orientation[0]) 
+    angular_vel_0 = (np.arctan2(agents[0].velocity[1], agents[0].velocity[0]) - orientation[0])
     if np.abs(angular_vel_0) > np.pi:
         angular_vel_0 = (orientation[0] - np.arctan2(agents[0].velocity[1], agents[0].velocity[0]))
     linear_vel_0 = np.sqrt(agents[0].velocity[0]**2 + agents[0].velocity[1]**2)
@@ -90,7 +82,7 @@ while not rospy.is_shutdown():
 
     vel_1 = Twist()
     
-    angular_vel_1 = (np.arctan2(agents[1].velocity[1], agents[1].velocity[0]) - orientation[1]) 
+    angular_vel_1 = (np.arctan2(agents[1].velocity[1], agents[1].velocity[0]) - orientation[1])
     if np.abs(angular_vel_1) > np.pi:
         angular_vel_1 = (orientation[1] - np.arctan2(agents[1].velocity[1], agents[1].velocity[0]))
     linear_vel_1 = np.sqrt(agents[1].velocity[0]**2 + agents[1].velocity[1]**2)
@@ -123,7 +115,7 @@ while not rospy.is_shutdown():
     pub_2.publish(vel_2)
     pub_3.publish(vel_3)
 
-    if t%100:
-        print(X)
-    t += 1
+    #if t%100:
+    #    print(X)
+    #t += 1
     rospy.sleep(Ts)
