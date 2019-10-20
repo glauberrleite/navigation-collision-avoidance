@@ -24,6 +24,16 @@ agents = []
 for i in xrange(len(X)):
     agents.append(Agent(X[i], [0., 0.], RADIUS))
 
+def velocityTransform(v, theta_0):
+    angular = np.arctan2(v[1], v[0]) - theta_0 
+    linear = np.sqrt(v[0]**2 + v[1]**2)
+
+    # Handling singularity
+    if np.abs(angular) > np.pi:
+        angular -= np.sign(angular) * 2 * np.pi
+
+    return [linear, angular]
+
 def update_positions(agents):
     for i in xrange(len(X)):
         agents[i].position = np.array(X[i])
@@ -32,18 +42,31 @@ def update_positions(agents):
 def callback_0(msg):
     X[0] = (float(msg.pose.pose.position.x), float(msg.pose.pose.position.y))
     orientation[0] = 2 * np.arctan2(float(msg.pose.pose.orientation.z), float(msg.pose.pose.orientation.w))
+    if (orientation[0] > np.pi):
+        # For gazebo odom quaternion
+        orientation[0] = 2 * np.arctan2(-float(msg.pose.pose.orientation.z), -float(msg.pose.pose.orientation.w))
 def callback_1(msg):
     X[1] = (float(msg.pose.pose.position.x), float(msg.pose.pose.position.y))
     orientation[1] = 2 * np.arctan2(float(msg.pose.pose.orientation.z), float(msg.pose.pose.orientation.w))
+    if (orientation[1] > np.pi):
+        # For gazebo odom quaternion
+        orientation[1] = 2 * np.arctan2(-float(msg.pose.pose.orientation.z), -float(msg.pose.pose.orientation.w))
 def callback_2(msg):
     X[2] = (float(msg.pose.pose.position.x), float(msg.pose.pose.position.y))
     orientation[2] = 2 * np.arctan2(float(msg.pose.pose.orientation.z), float(msg.pose.pose.orientation.w))
+    if (orientation[2] > np.pi):
+        # For gazebo odom quaternion
+        orientation[2] = 2 * np.arctan2(-float(msg.pose.pose.orientation.z), -float(msg.pose.pose.orientation.w))
 def callback_3(msg):
     X[3] = (float(msg.pose.pose.position.x), float(msg.pose.pose.position.y))
     orientation[3] = 2 * np.arctan2(float(msg.pose.pose.orientation.z), float(msg.pose.pose.orientation.w))
+    if (orientation[3] > np.pi):
+        # For gazebo odom quaternion
+        orientation[3] = 2 * np.arctan2(-float(msg.pose.pose.orientation.z), -float(msg.pose.pose.orientation.w))
 
 
 rospy.init_node('omni_controller')
+#rospy.on_shutdown(plot_result)
 
 sub_0 = rospy.Subscriber('/robot_0/odom', Odometry, callback_0)
 sub_1 = rospy.Subscriber('/robot_1/odom', Odometry, callback_1)
@@ -72,41 +95,29 @@ while not rospy.is_shutdown():
 
     vel_0 = Twist()
     
-    angular_vel_0 = (np.arctan2(agents[0].velocity[1], agents[0].velocity[0]) - orientation[0])
-    if np.abs(angular_vel_0) > np.pi:
-        angular_vel_0 = (orientation[0] - np.arctan2(agents[0].velocity[1], agents[0].velocity[0]))
-    linear_vel_0 = np.sqrt(agents[0].velocity[0]**2 + agents[0].velocity[1]**2)
+    [linear_vel_0, angular_vel_0] = velocityTransform(agents[0].velocity, orientation[0])
     
     vel_0.linear.x = linear_vel_0
     vel_0.angular.z = angular_vel_0
 
     vel_1 = Twist()
     
-    angular_vel_1 = (np.arctan2(agents[1].velocity[1], agents[1].velocity[0]) - orientation[1])
-    if np.abs(angular_vel_1) > np.pi:
-        angular_vel_1 = (orientation[1] - np.arctan2(agents[1].velocity[1], agents[1].velocity[0]))
-    linear_vel_1 = np.sqrt(agents[1].velocity[0]**2 + agents[1].velocity[1]**2)
+    [linear_vel_1, angular_vel_1] = velocityTransform(agents[1].velocity, orientation[1])
     
     vel_1.linear.x = linear_vel_1
     vel_1.angular.z = angular_vel_1
     
     vel_2 = Twist()
     
-    angular_vel_2 = (np.arctan2(agents[2].velocity[1], agents[2].velocity[0]) - orientation[2]) 
-    if np.abs(angular_vel_2) > np.pi:
-        angular_vel_2 = (orientation[2] - np.arctan2(agents[2].velocity[1], agents[2].velocity[0]))
-    linear_vel_2 = np.sqrt(agents[2].velocity[0]**2 + agents[2].velocity[1]**2)
+    [linear_vel_2, angular_vel_2] = velocityTransform(agents[2].velocity, orientation[2])
     
     vel_2.linear.x = linear_vel_2
     vel_2.angular.z = angular_vel_2
     
     vel_3 = Twist()
     
-    angular_vel_3 = (np.arctan2(agents[3].velocity[1], agents[3].velocity[0]) - orientation[3]) 
-    if np.abs(angular_vel_3) > np.pi:
-        angular_vel_3 = (orientation[3] - np.arctan2(agents[3].velocity[1], agents[3].velocity[0]))
-    linear_vel_3 = np.sqrt(agents[3].velocity[0]**2 + agents[3].velocity[1]**2)
-    
+    [linear_vel_3, angular_vel_3] = velocityTransform(agents[3].velocity, orientation[3])
+
     vel_3.linear.x = linear_vel_3
     vel_3.angular.z = angular_vel_3
 

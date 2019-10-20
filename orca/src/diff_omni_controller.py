@@ -19,6 +19,16 @@ goal = [(5.0, 0.0), (-5.0, 0.0), (0.0, -5.0), (0.0, 5.0)]
 
 agents = []
 
+
+def velocityTransform(v, theta_0):
+    angular = np.arctan2(v[1], v[0]) - theta_0 
+    linear = np.sqrt(v[0]**2 + v[1]**2)
+
+    # Handling singularity
+    if np.abs(angular) > np.pi:
+        angular -= np.sign(angular) * 2 * np.pi
+
+    return [linear, angular]
 for i in xrange(len(X)):
         vel = (np.array(goal[i]) - np.array(X[i]))
         if np.linalg.norm(vel) > V_max[i]:
@@ -66,41 +76,29 @@ while not rospy.is_shutdown():
 
     vel_0 = Twist()
     
-    angular_vel_0 = (np.arctan2(agents[0].velocity[1], agents[0].velocity[0]) - orientation[0])
-    if np.abs(angular_vel_0) > np.pi:
-        angular_vel_0 = (orientation[0] - np.arctan2(agents[0].velocity[1], agents[0].velocity[0]))
-    linear_vel_0 = np.sqrt(agents[0].velocity[0]**2 + agents[0].velocity[1]**2)
+    [linear_vel_0, angular_vel_0] = velocityTransform(agents[0].velocity, orientation[0])
     
     vel_0.linear.x = linear_vel_0
     vel_0.angular.z = angular_vel_0
 
     vel_1 = Twist()
     
-    angular_vel_1 = (np.arctan2(agents[1].velocity[1], agents[1].velocity[0]) - orientation[1])
-    if np.abs(angular_vel_1) > np.pi:
-        angular_vel_1 = (orientation[1] - np.arctan2(agents[1].velocity[1], agents[1].velocity[0]))
-    linear_vel_1 = np.sqrt(agents[1].velocity[0]**2 + agents[1].velocity[1]**2)
+    [linear_vel_1, angular_vel_1] = velocityTransform(agents[1].velocity, orientation[1])
     
     vel_1.linear.x = linear_vel_1
     vel_1.angular.z = angular_vel_1
     
     vel_2 = Twist()
     
-    angular_vel_2 = (np.arctan2(agents[2].velocity[1], agents[2].velocity[0]) - orientation[2]) 
-    if np.abs(angular_vel_2) > np.pi:
-        angular_vel_2 = (orientation[2] - np.arctan2(agents[2].velocity[1], agents[2].velocity[0]))
-    linear_vel_2 = np.sqrt(agents[2].velocity[0]**2 + agents[2].velocity[1]**2)
+    [linear_vel_2, angular_vel_2] = velocityTransform(agents[2].velocity, orientation[2])
     
     vel_2.linear.x = linear_vel_2
     vel_2.angular.z = angular_vel_2
     
     vel_3 = Twist()
     
-    angular_vel_3 = (np.arctan2(agents[3].velocity[1], agents[3].velocity[0]) - orientation[3]) 
-    if np.abs(angular_vel_3) > np.pi:
-        angular_vel_3 = (orientation[3] - np.arctan2(agents[3].velocity[1], agents[3].velocity[0]))
-    linear_vel_3 = np.sqrt(agents[3].velocity[0]**2 + agents[3].velocity[1]**2)
-    
+    [linear_vel_3, angular_vel_3] = velocityTransform(agents[3].velocity, orientation[3])
+
     vel_3.linear.x = linear_vel_3
     vel_3.angular.z = angular_vel_3
     
