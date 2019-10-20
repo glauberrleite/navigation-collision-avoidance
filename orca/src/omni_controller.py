@@ -1,11 +1,10 @@
 #!/usr/bin/env python2
 
 import rospy
-import sys
 import numpy
 from nav_msgs.msg import Odometry
 from geometry_msgs.msg import Twist
-from pyorca import Agent, get_avoidance_velocity, orca, normalized, perp
+from pyorca import Agent, orca, normalized
 
 N_AGENTS = 4
 RADIUS = 0.7

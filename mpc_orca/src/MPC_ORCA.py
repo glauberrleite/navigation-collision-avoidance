@@ -63,7 +63,7 @@ class MPC_ORCA:
 
         # MPC objective function
         Q = sparse.diags([1., 1., 0., 0.])
-        Q_n = sparse.diags([1., 1., 10., 10.])
+        Q_n = sparse.diags([1., 1., 100., 100.])
         R = 0.2 * sparse.eye(self.nu)
 
         # Casting QP format
@@ -143,6 +143,7 @@ class MPC_ORCA:
             # return the first resulting velocity after control action
             return result.x[(self.nx + 2):(self.nx + 4)]
         else:
+            print('unsolved')
             return numpy.array([self.agent.velocity[0], self.agent.velocity[1]])
         
     
