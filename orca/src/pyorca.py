@@ -27,7 +27,7 @@ import numpy
 from numpy import array, sqrt, copysign, dot
 from numpy.linalg import det
 
-from halfplaneintersect import halfplane_optimize, Line, perp
+from halfplaneintersect import halfplane_optimize, Line, perp, InfeasibleError
 
 # Method:
 # For each robot A and potentially colliding robot B, compute smallest change
@@ -56,7 +56,11 @@ def orca(agent, colliding_agents, t, dt):
         dv, n = get_avoidance_velocity(agent, collider, t, dt)
         line = Line(agent.velocity + dv / 2, n)
         lines.append(line)
-    return halfplane_optimize(lines, agent.pref_velocity), lines
+    try:
+        return halfplane_optimize(lines, agent.pref_velocity), lines
+    except (InfeasibleError):
+        print('Infeasible')
+        return agent.velocity, lines
 
 def get_avoidance_velocity(agent, collider, t, dt):
     """Get the smallest relative change in velocity between agent and collider

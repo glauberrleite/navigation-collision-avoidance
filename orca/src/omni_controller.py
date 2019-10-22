@@ -47,10 +47,11 @@ sub_0 = rospy.Subscriber('/robot_0/odom', Odometry, callback_0)
 sub_1 = rospy.Subscriber('/robot_1/odom', Odometry, callback_1)
 sub_2 = rospy.Subscriber('/robot_2/odom', Odometry, callback_2)
 sub_3 = rospy.Subscriber('/robot_3/odom', Odometry, callback_3)
-pub_0 = rospy.Publisher('/robot_0/cmd_vel', Twist, queue_size=10)
-pub_1 = rospy.Publisher('/robot_1/cmd_vel', Twist, queue_size=10)
-pub_2 = rospy.Publisher('/robot_2/cmd_vel', Twist, queue_size=10)
-pub_3 = rospy.Publisher('/robot_3/cmd_vel', Twist, queue_size=10)
+pub = []
+pub.append(rospy.Publisher('/robot_0/cmd_vel', Twist, queue_size=10))
+pub.append(rospy.Publisher('/robot_1/cmd_vel', Twist, queue_size=10))
+pub.append(rospy.Publisher('/robot_2/cmd_vel', Twist, queue_size=10))
+pub.append(rospy.Publisher('/robot_3/cmd_vel', Twist, queue_size=10))
 t = 0
 
 while not rospy.is_shutdown():
@@ -59,26 +60,12 @@ while not rospy.is_shutdown():
         candidates = agents[:i] + agents[i + 1:]
         agent.velocity, _ = orca(agent, candidates, tau, Ts)
 
-    vel_0 = Twist()
-    vel_0.linear.x = agents[0].velocity[0]
-    vel_0.linear.y = agents[0].velocity[1]
+    for i in xrange(len(X)):
+        vel = Twist()
+        vel.linear.x = agents[i].velocity[0]
+        vel.linear.y = agents[i].velocity[1]
 
-    vel_1 = Twist()
-    vel_1.linear.x = agents[1].velocity[0]
-    vel_1.linear.y = agents[1].velocity[1]
-    
-    vel_2 = Twist()
-    vel_2.linear.x = agents[2].velocity[0]
-    vel_2.linear.y = agents[2].velocity[1]
-    
-    vel_3 = Twist()
-    vel_3.linear.x = agents[3].velocity[0]
-    vel_3.linear.y = agents[3].velocity[1]
-
-    pub_0.publish(vel_0)
-    pub_1.publish(vel_1)
-    pub_2.publish(vel_2)
-    pub_3.publish(vel_3)
+        pub[i].publish(vel)
 
     if t%100:
         print(X)
