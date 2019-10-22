@@ -1,0 +1,64 @@
+define robot position (
+	origin [0.000 0.000 0.000 0.000]
+	drive "omni"
+	bitmap "circle.png"
+)
+
+
+#resolution 0.02
+
+#interval_sim 100
+
+#window (
+#	size [745 448]
+#	rotate [0 0]
+#	scale 18.806
+#)
+
+robot (
+	pose [ -10.000 0.000 0.000 0.000]
+	name "r0" 
+	color "blue"
+)
+
+robot (
+	pose [ 10.000 0.000 0.000 0.000]
+	name "r1"
+	color "red"
+)
+
+robot (
+	pose [ 0.000 10.000 0.000 0.000]
+	name "r2"
+	color "black"
+)
+
+robot (
+	pose [0.000 -10.000 0.000 0.000]
+	name "r3"
+	color "pink"
+)
+
+robot (
+	pose [-10.000 10.000 0.000 0.000]
+	name "r4"
+	color "yellow"
+)
+
+robot (
+	pose [-10.000 -10.000 0.000 0.000]
+	name "r5"
+	color "green"
+)
+
+robot (
+	pose [10.000 -10.000 0.000 0.000]
+	name "r6"
+	color "gray"
+)
+
+robot (
+	pose [10.000 10.000 0.000 0.000]
+	name "r7"
+	color "orange"
+)
