@@ -1,11 +1,11 @@
 #!/usr/bin/env python2
 
 import rospy
-import numpy as np
+import numpy
 from nav_msgs.msg import Odometry
 from geometry_msgs.msg import Twist, Vector3
 from rosgraph_msgs.msg import Clock
-from MPC_ORCA import MPC_ORCA
+from MPC_ORCA2 import MPC_ORCA2
 from pyorca import Agent
 
 RADIUS = 0.5
@@ -26,25 +26,25 @@ for i in xrange(len(X)):
 
 def update_positions(agents):
     for i in xrange(len(X)):
-        agents[i].position = np.array(X[i])
+        agents[i].position = numpy.array(X[i])
     return agents
 
 def callback_0(msg):
-    X[0] = np.array([float(msg.pose.pose.position.x), float(msg.pose.pose.position.y)])
+    X[0] = (float(msg.pose.pose.position.x), float(msg.pose.pose.position.y))
 def callback_1(msg):
-    X[1] = np.array([float(msg.pose.pose.position.x), float(msg.pose.pose.position.y)])
+    X[1] = (float(msg.pose.pose.position.x), float(msg.pose.pose.position.y))
 def callback_2(msg):
-    X[2] = np.array([float(msg.pose.pose.position.x), float(msg.pose.pose.position.y)])
+    X[2] = (float(msg.pose.pose.position.x), float(msg.pose.pose.position.y))
 def callback_3(msg):
-    X[3] = np.array([float(msg.pose.pose.position.x), float(msg.pose.pose.position.y)])
+    X[3] = (float(msg.pose.pose.position.x), float(msg.pose.pose.position.y))
 def callback_4(msg):
-    X[4] = np.array([float(msg.pose.pose.position.x), float(msg.pose.pose.position.y)])
+    X[4] = (float(msg.pose.pose.position.x), float(msg.pose.pose.position.y))
 def callback_5(msg):
-    X[5] = np.array([float(msg.pose.pose.position.x), float(msg.pose.pose.position.y)])
+    X[5] = (float(msg.pose.pose.position.x), float(msg.pose.pose.position.y))
 def callback_6(msg):
-    X[6] = np.array([float(msg.pose.pose.position.x), float(msg.pose.pose.position.y)])
+    X[6] = (float(msg.pose.pose.position.x), float(msg.pose.pose.position.y))
 def callback_7(msg):
-    X[7] = np.array([float(msg.pose.pose.position.x), float(msg.pose.pose.position.y)])
+    X[7] = (float(msg.pose.pose.position.x), float(msg.pose.pose.position.y))
 
 
 rospy.init_node('omni_controller')
@@ -66,17 +66,18 @@ pub.append(rospy.Publisher('/robot_4/cmd_vel', Twist, queue_size=10))
 pub.append(rospy.Publisher('/robot_5/cmd_vel', Twist, queue_size=10))
 pub.append(rospy.Publisher('/robot_6/cmd_vel', Twist, queue_size=10))
 pub.append(rospy.Publisher('/robot_7/cmd_vel', Twist, queue_size=10))
-pub_setpoint_pos = rospy.Publisher('/setpoint_pos', Vector3, queue_size=10)
-pub_setpoint_vel = rospy.Publisher('/setpoint_vel', Vector3, queue_size=10)
+pub_setpoint = rospy.Publisher('/setpoint', Vector3, queue_size=10)
+t = 0
 
-setpoint_pos = Vector3()
-setpoint_vel = Vector3()
+setpoint = Vector3()
+setpoint.x = goal[4][0]
+setpoint.y = goal[4][1]
 
 # Initializing Controllers
 controller = []
 for i, agent in enumerate(agents):
     colliders = agents[:i] + agents[i + 1:]
-    controller.append(MPC_ORCA(agent.position, V_min[i], V_max[i], N, Ts, colliders, tau, agent.radius))
+    controller.append(MPC_ORCA2(goal[i], agent.position, V_min[i], V_max[i], N, Ts, colliders, tau, agent.radius))
 
 rospy.wait_for_message('/clock', Clock)
 
@@ -85,21 +86,9 @@ while not rospy.is_shutdown():
     agents = update_positions(agents)
 
     for i, agent in enumerate(agents):
-        # Computing desired velocity
-        V_des = goal[i] - X[i]
-        P_des = X[i] + V_des * Ts
-
         controller[i].agent = agents[i]
         controller[i].colliders = agents[:i] + agents[i + 1:]
-
-        agents[i].velocity = controller[i].getNewVelocity(P_des, V_des)
-
-        if i == 2:
-            setpoint_pos.x = P_des[0]
-            setpoint_pos.y = P_des[1]
-
-            setpoint_vel.x = V_des[0]
-            setpoint_vel.y = V_des[1]
+        agents[i].velocity = controller[i].getNewVelocity()
 
     for i in xrange(len(X)):
         vel = Twist()
@@ -108,7 +97,10 @@ while not rospy.is_shutdown():
 
         pub[i].publish(vel)
 
-    pub_setpoint_pos.publish(setpoint_pos)
-    pub_setpoint_vel.publish(setpoint_vel)
+    pub_setpoint.publish(setpoint)
 
+    if t%100:
+        #print(X)
+        pass
+    t += 1
     rospy.sleep(Ts)

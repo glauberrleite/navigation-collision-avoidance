@@ -41,49 +41,49 @@ def update_positions(agents):
     return agents
 
 def callback_0(msg):
-    X[0] = np.array([float(msg.pose.pose.position.x), float(msg.pose.pose.position.y)])
+    X[0] = (float(msg.pose.pose.position.x), float(msg.pose.pose.position.y))
     orientation[0] = 2 * np.arctan2(float(msg.pose.pose.orientation.z), float(msg.pose.pose.orientation.w))
     if (orientation[0] > np.pi):
         # For gazebo odom quaternion
         orientation[0] = 2 * np.arctan2(-float(msg.pose.pose.orientation.z), -float(msg.pose.pose.orientation.w))
 def callback_1(msg):
-    X[1] = np.array([float(msg.pose.pose.position.x), float(msg.pose.pose.position.y)])
+    X[1] = (float(msg.pose.pose.position.x), float(msg.pose.pose.position.y))
     orientation[1] = 2 * np.arctan2(float(msg.pose.pose.orientation.z), float(msg.pose.pose.orientation.w))
     if (orientation[1] > np.pi):
         # For gazebo odom quaternion
         orientation[1] = 2 * np.arctan2(-float(msg.pose.pose.orientation.z), -float(msg.pose.pose.orientation.w))
 def callback_2(msg):
-    X[2] = np.array([float(msg.pose.pose.position.x), float(msg.pose.pose.position.y)])
+    X[2] = (float(msg.pose.pose.position.x), float(msg.pose.pose.position.y))
     orientation[2] = 2 * np.arctan2(float(msg.pose.pose.orientation.z), float(msg.pose.pose.orientation.w))
     if (orientation[2] > np.pi):
         # For gazebo odom quaternion
         orientation[2] = 2 * np.arctan2(-float(msg.pose.pose.orientation.z), -float(msg.pose.pose.orientation.w))
 def callback_3(msg):
-    X[3] = np.array([float(msg.pose.pose.position.x), float(msg.pose.pose.position.y)])
+    X[3] = (float(msg.pose.pose.position.x), float(msg.pose.pose.position.y))
     orientation[3] = 2 * np.arctan2(float(msg.pose.pose.orientation.z), float(msg.pose.pose.orientation.w))
     if (orientation[3] > np.pi):
         # For gazebo odom quaternion
         orientation[3] = 2 * np.arctan2(-float(msg.pose.pose.orientation.z), -float(msg.pose.pose.orientation.w))
 def callback_4(msg):
-    X[4] = np.array([float(msg.pose.pose.position.x), float(msg.pose.pose.position.y)])
+    X[4] = (float(msg.pose.pose.position.x), float(msg.pose.pose.position.y))
     orientation[4] = 2 * np.arctan2(float(msg.pose.pose.orientation.z), float(msg.pose.pose.orientation.w))
     if (orientation[4] > np.pi):
         # For gazebo odom quaternion
         orientation[4] = 2 * np.arctan2(-float(msg.pose.pose.orientation.z), -float(msg.pose.pose.orientation.w))
 def callback_5(msg):
-    X[5] = np.array([float(msg.pose.pose.position.x), float(msg.pose.pose.position.y)])
+    X[5] = (float(msg.pose.pose.position.x), float(msg.pose.pose.position.y))
     orientation[5] = 2 * np.arctan2(float(msg.pose.pose.orientation.z), float(msg.pose.pose.orientation.w))
     if (orientation[5] > np.pi):
         # For gazebo odom quaternion
         orientation[5] = 2 * np.arctan2(-float(msg.pose.pose.orientation.z), -float(msg.pose.pose.orientation.w))
 def callback_6(msg):
-    X[6] = np.array([float(msg.pose.pose.position.x), float(msg.pose.pose.position.y)])
+    X[6] = (float(msg.pose.pose.position.x), float(msg.pose.pose.position.y))
     orientation[6] = 2 * np.arctan2(float(msg.pose.pose.orientation.z), float(msg.pose.pose.orientation.w))
     if (orientation[6] > np.pi):
         # For gazebo odom quaternion
         orientation[6] = 2 * np.arctan2(-float(msg.pose.pose.orientation.z), -float(msg.pose.pose.orientation.w))
 def callback_7(msg):
-    X[7] = np.array([float(msg.pose.pose.position.x), float(msg.pose.pose.position.y)])
+    X[7] = (float(msg.pose.pose.position.x), float(msg.pose.pose.position.y))
     orientation[7] = 2 * np.arctan2(float(msg.pose.pose.orientation.z), float(msg.pose.pose.orientation.w))
     if (orientation[7] > np.pi):
         # For gazebo odom quaternion
@@ -108,17 +108,17 @@ pub.append(rospy.Publisher('/robot_4/cmd_vel', Twist, queue_size=10))
 pub.append(rospy.Publisher('/robot_5/cmd_vel', Twist, queue_size=10))
 pub.append(rospy.Publisher('/robot_6/cmd_vel', Twist, queue_size=10))
 pub.append(rospy.Publisher('/robot_7/cmd_vel', Twist, queue_size=10))
-pub_setpoint_pos = rospy.Publisher('/setpoint_pos', Vector3, queue_size=10)
-pub_setpoint_vel = rospy.Publisher('/setpoint_vel', Vector3, queue_size=10)
+pub_setpoint = rospy.Publisher('/setpoint', Vector3, queue_size=10)
 
-setpoint_pos = Vector3()
-setpoint_vel = Vector3()
+setpoint = Vector3()
+setpoint.x = goal[4][0]
+setpoint.y = goal[4][1]
 
 # Initializing Controllers
 controller = []
 for i, agent in enumerate(agents):
     colliders = agents[:i] + agents[i + 1:]
-    controller.append(MPC_ORCA(agent.position, V_min[i], V_max[i], N, Ts, colliders, tau, agent.radius))
+    controller.append(MPC_ORCA(goal[i], agent.position, V_min[i], V_max[i], N, Ts, colliders, tau, agent.radius))
 
 rospy.wait_for_message('/clock', Clock)
 
@@ -127,21 +127,9 @@ while not rospy.is_shutdown():
     agents = update_positions(agents)
 
     for i, agent in enumerate(agents):
-        # Computing desired velocity
-        V_des = goal[i] - X[i]
-        P_des = X[i] + V_des * Ts
-
         controller[i].agent = agents[i]
         controller[i].colliders = agents[:i] + agents[i + 1:]
-
-        agents[i].velocity = controller[i].getNewVelocity(P_des, V_des)
-    
-        if i == 2:
-            setpoint_pos.x = P_des[0]
-            setpoint_pos.y = P_des[1]
-
-            setpoint_vel.x = V_des[0]
-            setpoint_vel.y = V_des[1]
+        agents[i].velocity = controller[i].getNewVelocity()
 
     for i in xrange(len(X)):
         vel = Twist()
@@ -149,6 +137,5 @@ while not rospy.is_shutdown():
 
         pub[i].publish(vel)
     
-    pub_setpoint_pos.publish(setpoint_pos)
-    pub_setpoint_vel.publish(setpoint_vel)
+    pub_setpoint.publish(setpoint)
     rospy.sleep(Ts)

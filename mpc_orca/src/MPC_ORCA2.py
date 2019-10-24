@@ -3,9 +3,9 @@ import numpy
 import scipy.sparse as sparse
 from pyorca import Agent, orca
 
-class MPC_ORCA:
+class MPC_ORCA2:
 
-    def __init__(self, position, v_min, v_max, N, Ts, colliders, tau, robot_radius):
+    def __init__(self, goal, position, v_min, v_max, N, Ts, colliders, tau, robot_radius):
         """ MPC-ORCA controller instance
         
         :param goal: Goal position
@@ -56,28 +56,27 @@ class MPC_ORCA:
         umax = numpy.array([v_max/Ts, v_max/Ts])
 
         # Initial state
-        x_0 = numpy.array([position[0], position[1], 0., 0.])
+        x0 = numpy.array([position[0], position[1], 0., 0.])
 
         # Setpoint
-        x_r = numpy.array([position[0], position[1], 0., 0.])
+        x_r = numpy.array([goal[0], goal[1], 0., 0.])
 
         # MPC objective function
-        #Q = sparse.diags([1., 1., 0., 0.])
-        Q = sparse.diags([1., 1., 1., 1.])
-        Q_n = sparse.diags([1., 1., 1., 1.])
+        Q = sparse.diags([1., 1., 0., 0.])
+        Q_n = sparse.diags([1., 1., 100., 100.])
         R = 0.2 * sparse.eye(self.nu)
 
         # Casting QP format
         # QP objective
         P = sparse.block_diag([sparse.kron(sparse.eye(N), Q), Q_n, sparse.kron(sparse.eye(N), R)]).tocsc()
-        self.q = numpy.hstack([numpy.kron(numpy.ones(N), -Q.dot(x_r)), -Q_n.dot(x_r), numpy.zeros(N * self.nu)])
+        q = numpy.hstack([numpy.kron(numpy.ones(N), -Q.dot(x_r)), -Q_n.dot(x_r), numpy.zeros(N * self.nu)])
 
         # QP constraints
         # - linear dynamics
         Ax = sparse.kron(sparse.eye(N+1),-sparse.eye(self.nx)) + sparse.kron(sparse.eye(N+1, k=-1), Ad)
         Bu = sparse.kron(sparse.vstack([sparse.csc_matrix((1, N)), sparse.eye(N)]), Bd)
         A_eq = sparse.hstack([Ax, Bu])
-        l_eq = numpy.hstack([-x_0, numpy.zeros(N*self.nx)])
+        l_eq = numpy.hstack([-x0, numpy.zeros(N*self.nx)])
         u_eq = l_eq
 
         # - input and state constraints
@@ -106,25 +105,19 @@ class MPC_ORCA:
         self.A = sparse.vstack([A_eq, A_ineq, A_ORCA]).tocsc()
         self.l = numpy.hstack([l_eq, l_ineq, l_ORCA])
         self.u = numpy.hstack([u_eq, u_ineq, u_ORCA])
-        self.Q = Q
-        self.Q_n = Q_n
-        self.R = R
 
         self.orca_rows_idx = A_eq.shape[0] + A_ineq.shape[0]
 
         # Setting problem
         self.problem = osqp.OSQP()
-        self.problem.setup(P, self.q, self.A, self.l, self.u, warm_start=True, verbose=False)
+        self.problem.setup(P, q, self.A, self.l, self.u, warm_start=True, verbose=False)
 
-    def getNewVelocity(self, setpoint_pos, setpoint_vel):
+    def getNewVelocity(self):
         # Updating initial conditions
-        x_0 = numpy.array([self.agent.position[0], self.agent.position[1], self.agent.velocity[0], self.agent.velocity[1]])
-        x_r = numpy.array([setpoint_pos[0], setpoint_pos[1], setpoint_vel[0], setpoint_vel[1]])
+        x0 = numpy.array([self.agent.position[0], self.agent.position[1], self.agent.velocity[0], self.agent.velocity[1]])
         
-        self.q = numpy.hstack([numpy.kron(numpy.ones(self.N), -self.Q.dot(x_r)), -self.Q_n.dot(x_r), numpy.zeros(self.N * self.nu)])
-
-        self.l[:self.nx] = -x_0
-        self.u[:self.nx] = -x_0
+        self.l[:self.nx] = -x0
+        self.u[:self.nx] = -x0
 
         # Predict future states with constant velocity, i.e. no acceleration
         for k in range(self.N):
@@ -143,7 +136,7 @@ class MPC_ORCA:
                 self.u[self.orca_rows_idx + i * self.N + k] = numpy.dot(n, v0)
                 
 
-        self.problem.update(q=self.q, l=self.l, u=self.u, Ax=self.A.data)
+        self.problem.update(l=self.l, u=self.u, Ax=self.A.data)
         result = self.problem.solve()
 
         if result.info.status == 'solved':
