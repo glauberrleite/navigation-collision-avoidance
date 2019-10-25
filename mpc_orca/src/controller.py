@@ -1,100 +1,106 @@
 #!/usr/bin/env python2
 
-# @author glauberrleite
-
 import rospy
-
 import numpy as np
-
-from RVO import RVO_update, reach, compute_V_des, reach
-from geometry_msgs.msg import Twist
 from gazebo_msgs.msg import ModelStates
-from kobuki_msgs.msg import MotorPower
+from geometry_msgs.msg import Twist, Vector3
+from rosgraph_msgs.msg import Clock
+from MPC_ORCA import MPC_ORCA
+from pyorca import Agent
 
-scenario = dict()
-scenario['robot_radius'] = 0.8
-scenario['circular_obstacles'] = []
-scenario['boundary'] = []
+RADIUS = 0.5
+tau = 15
 
-Ts = 0.01
-X = [[0,0], [10,0]]
-orientation = [0, np.pi]
-V = [[0,0] for _ in xrange(len(X))]
-V_max = [1.0 for i in xrange(len(X))]
-goal = [[10, 0], [0,0]]
+N = 10
+Ts = 0.1
+X = [[-10., 0.], [10., 0.], [0, 10.], [0., -10.]]
+orientation = [0, np.pi, -np.pi/2, np.pi/2]
+#X = [[-10., 0.], [10., 0.]]
+#orientation = [0, np.pi]
+V = [[0., 0.] for _ in xrange(len(X))]
+V_min = [-1.0 for _ in xrange(len(X))]
+V_max = [1.0 for _ in xrange(len(X))]
+goal = [[10., 0.], [-10., 0.], [0.0, -10.], [0., 10.]]
+#goal = [[10., 0.], [-10., 0.]]
+model = [i+1 for i in xrange(len(X))]
+
+agents = []
+
+for i in xrange(len(X)):
+    agents.append(Agent(X[i], [0., 0.], RADIUS))
+
+def velocityTransform(v, theta_0):
+    angular = np.arctan2(v[1], v[0]) - theta_0 
+    linear = np.sqrt(v[0]**2 + v[1]**2)
+
+    # Handling singularity
+    if np.abs(angular) > np.pi:
+        angular -= np.sign(angular) * 2 * np.pi
+
+    return [linear, angular]
+
+def update_positions(agents):
+    for i in xrange(len(X)):
+        agents[i].position = np.array(X[i])
+    return agents
 
 def updateWorld(msg):
-    X[0] = [float(msg.pose[1].position.x), float(msg.pose[1].position.y)]
-    orientation[0] = 2* np.arctan2(float(msg.pose[1].orientation.z), float(msg.pose[1].orientation.w))
-    if np.abs(orientation[0]) > np.pi:
-        orientation[0] = orientation[0] - np.sign(orientation[0]) * 2 * np.pi
+    for i in xrange(len(X)):
+        X[i] = np.array([float(msg.pose[model[i]].position.x), float(msg.pose[model[i]].position.y)])
+        orientation[i] = 2 * np.arctan2(float(msg.pose[model[i]].orientation.z), float(msg.pose[model[i]].orientation.w))
+    if (orientation[i] > np.pi):
+        # For gazebo odom quaternion
+        orientation[i] = 2 * np.arctan2(-float(msg.pose[model[i]].orientation.z), -float(msg.pose[model[i]].orientation.w))
 
-    X[1] = [float(msg.pose[2].position.x), float(msg.pose[2].position.y)]
-    orientation[1] = 2* np.arctan2(float(msg.pose[2].orientation.z), float(msg.pose[2].orientation.w)) 
-    if np.abs(orientation[1]) > np.pi:
-        orientation[1] = orientation[1] - np.sign(orientation[1]) * 2 * np.pi
-
-
-rospy.init_node('rvo_controller')
-pub_vel_r0 = rospy.Publisher("robot0/mobile_base/commands/velocity", Twist, queue_size=10);
-pub_vel_r1 = rospy.Publisher("robot1/mobile_base/commands/velocity", Twist, queue_size=10);
-pub_mot_r0 = rospy.Publisher("robot0/mobile_base/commands/motor_power", MotorPower, queue_size=10);
-pub_mot_r1 = rospy.Publisher("robot1/mobile_base/commands/motor_power", MotorPower, queue_size=10);
+rospy.init_node('diff_controller')
 
 rospy.Subscriber('/gazebo/model_states', ModelStates, updateWorld)
+pub = []
+pub.append(rospy.Publisher('/robot_0/cmd_vel', Twist, queue_size=10))
+pub.append(rospy.Publisher('/robot_1/cmd_vel', Twist, queue_size=10))
+pub.append(rospy.Publisher('/robot_2/cmd_vel', Twist, queue_size=10))
+pub.append(rospy.Publisher('/robot_3/cmd_vel', Twist, queue_size=10))
+pub_setpoint_pos = rospy.Publisher('/setpoint_pos', Vector3, queue_size=10)
+pub_setpoint_vel = rospy.Publisher('/setpoint_vel', Vector3, queue_size=10)
 
-motor0 = MotorPower()
-motor1 = MotorPower()
-motor0.state = motor0.ON
-motor1.state = motor1.ON
+setpoint_pos = Vector3()
+setpoint_vel = Vector3()
 
-pub_mot_r0.publish(motor0)
-pub_mot_r1.publish(motor1)
+# Initializing Controllers
+controller = []
+for i, agent in enumerate(agents):
+    colliders = agents[:i] + agents[i + 1:]
+    controller.append(MPC_ORCA(agent.position, V_min[i], V_max[i], N, Ts, colliders, tau, agent.radius))
 
-t = 0
+rospy.wait_for_message('/clock', Clock)
 
 while not rospy.is_shutdown():
-    # compute desired vel to goal
-    V_des = compute_V_des(X, goal, V_max)
-    # compute the optimal vel to avoid collision
-    V = RVO_update(X, V_des, V, scenario)
+    
+    agents = update_positions(agents)
 
-    # Compute ang_vel considering singularities
-    angular_vel_0 = (np.arctan2(V[0][1], V[0][0]) - orientation[0]) 
-    if np.abs(angular_vel_0) > np.pi:
-        angular_vel_0 = (orientation[0] - np.arctan2(V[0][1], V[0][0]))
+    for i, agent in enumerate(agents):
+        # Computing desired velocity
+        V_des = goal[i] - X[i]
+        P_des = X[i] + V_des * Ts
 
-    linear_vel_0 = np.sqrt(V[0][0]**2 + V[0][1]**2)
-    vel_rob0 = Twist()
-    vel_rob0.linear.x = linear_vel_0
-    vel_rob0.linear.y = 0.0
-    vel_rob0.linear.z = 0.0
-    vel_rob0.angular.x = 0.0
-    vel_rob0.angular.y = 0.0
-    vel_rob0.angular.z = angular_vel_0
+        controller[i].agent = agents[i]
+        controller[i].colliders = agents[:i] + agents[i + 1:]
 
-    angular_vel_1 = (np.arctan2(V[1][1], V[1][0]) - orientation[1])
-    if np.abs(angular_vel_1) > np.pi:
-        angular_vel_1 = (orientation[0] - np.arctan2(V[1][1], V[1][0]))
+        agents[i].velocity = controller[i].getNewVelocity(P_des, V_des)
+    
+        if i == 1:
+            setpoint_pos.x = P_des[0]
+            setpoint_pos.y = P_des[1]
 
-    linear_vel_1 = np.sqrt(V[1][0]**2 + V[1][1]**2)
-    vel_rob1 = Twist()
-    vel_rob1.linear.x = linear_vel_1
-    vel_rob1.linear.y = 0.0;
-    vel_rob1.linear.z = 0.0;
-    vel_rob1.angular.x = 0.0;
-    vel_rob1.angular.y = 0.0;
-    vel_rob1.angular.z = angular_vel_1
+            setpoint_vel.x = V_des[0]
+            setpoint_vel.y = V_des[1]
 
-    pub_vel_r0.publish(vel_rob0)
-    pub_vel_r1.publish(vel_rob1)
+    for i in xrange(len(X)):
+        vel = Twist()
+        [vel.linear.x, vel.angular.z] = velocityTransform(agents[i].velocity, orientation[i])
 
-    #if t%100 == 0:
-    #    print(V_des[1])
-    #    print(vel_rob1.linear.x)
-    #    print(vel_rob1.angular.z)
-    #    print(orientation)
-    #    print('---------')
-    #t = t + 1
-
+        pub[i].publish(vel)
+    
+    pub_setpoint_pos.publish(setpoint_pos)
+    pub_setpoint_vel.publish(setpoint_vel)
     rospy.sleep(Ts)
