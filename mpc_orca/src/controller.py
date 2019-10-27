@@ -9,19 +9,19 @@ from MPC_ORCA import MPC_ORCA
 from pyorca import Agent
 
 RADIUS = 0.5
-tau = 15
+tau = 5
 
 N = 10
 Ts = 0.1
-X = [[-10., 0.], [10., 0.], [0, 10.], [0., -10.]]
+X = [[-7., 0.], [7., 0.], [0, 7.], [0., -7.]]
 orientation = [0, np.pi, -np.pi/2, np.pi/2]
-#X = [[-10., 0.], [10., 0.]]
+#X = [[-7., 0.], [7., 0.]]
 #orientation = [0, np.pi]
 V = [[0., 0.] for _ in xrange(len(X))]
 V_min = [-1.0 for _ in xrange(len(X))]
 V_max = [1.0 for _ in xrange(len(X))]
-goal = [[10., 0.], [-10., 0.], [0.0, -10.], [0., 10.]]
-#goal = [[10., 0.], [-10., 0.]]
+goal = [[7., 0.], [-7., 0.], [0.0, -7.], [0., 7.]]
+#goal = [[7., 0.], [-7., 0.]]
 model = [i+1 for i in xrange(len(X))]
 
 agents = []
@@ -54,12 +54,17 @@ def updateWorld(msg):
 
 rospy.init_node('diff_controller')
 
+# Subscribing on model_states instead of robot/odom, to avoid unnecessary noise
 rospy.Subscriber('/gazebo/model_states', ModelStates, updateWorld)
 pub = []
+
+# Velocity publishers
 pub.append(rospy.Publisher('/robot_0/cmd_vel', Twist, queue_size=10))
 pub.append(rospy.Publisher('/robot_1/cmd_vel', Twist, queue_size=10))
 pub.append(rospy.Publisher('/robot_2/cmd_vel', Twist, queue_size=10))
 pub.append(rospy.Publisher('/robot_3/cmd_vel', Twist, queue_size=10))
+
+# Setpoint Publishers
 pub_setpoint_pos = rospy.Publisher('/setpoint_pos', Vector3, queue_size=10)
 pub_setpoint_vel = rospy.Publisher('/setpoint_vel', Vector3, queue_size=10)
 
@@ -72,7 +77,13 @@ for i, agent in enumerate(agents):
     colliders = agents[:i] + agents[i + 1:]
     controller.append(MPC_ORCA(agent.position, V_min[i], V_max[i], N, Ts, colliders, tau, agent.radius))
 
-rospy.wait_for_message('/clock', Clock)
+# Getting robot model order on gazebo model_states
+data = rospy.wait_for_message('/gazebo/model_states', ModelStates)
+for i, value in enumerate(data.name):
+    # Skipping i == 0 because it's the ground_plane state
+    if i > 0:
+        idx = value.split('_')
+        model[int(idx[1])] = i
 
 while not rospy.is_shutdown():
     

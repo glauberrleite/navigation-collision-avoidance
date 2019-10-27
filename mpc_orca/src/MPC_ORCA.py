@@ -62,15 +62,13 @@ class MPC_ORCA:
         x_r = numpy.array([position[0], position[1], 0., 0.])
 
         # MPC objective function
-        #Q = sparse.diags([1., 1., 0., 0.])
         Q = sparse.diags([1., 1., 1., 1.])
-        Q_n = sparse.diags([1., 1., 1., 1.])
         R = 0.2 * sparse.eye(self.nu)
 
         # Casting QP format
         # QP objective
-        P = sparse.block_diag([sparse.kron(sparse.eye(N), Q), Q_n, sparse.kron(sparse.eye(N), R)]).tocsc()
-        self.q = numpy.hstack([numpy.kron(numpy.ones(N), -Q.dot(x_r)), -Q_n.dot(x_r), numpy.zeros(N * self.nu)])
+        P = sparse.block_diag([sparse.kron(sparse.eye(N+1), Q), sparse.kron(sparse.eye(N), R)]).tocsc()
+        self.q = numpy.hstack([numpy.kron(numpy.ones(N+1), -Q.dot(x_r)), numpy.zeros(N * self.nu)])
 
         # QP constraints
         # - linear dynamics
@@ -107,7 +105,6 @@ class MPC_ORCA:
         self.l = numpy.hstack([l_eq, l_ineq, l_ORCA])
         self.u = numpy.hstack([u_eq, u_ineq, u_ORCA])
         self.Q = Q
-        self.Q_n = Q_n
         self.R = R
 
         self.orca_rows_idx = A_eq.shape[0] + A_ineq.shape[0]
@@ -121,7 +118,7 @@ class MPC_ORCA:
         x_0 = numpy.array([self.agent.position[0], self.agent.position[1], self.agent.velocity[0], self.agent.velocity[1]])
         x_r = numpy.array([setpoint_pos[0], setpoint_pos[1], setpoint_vel[0], setpoint_vel[1]])
         
-        self.q = numpy.hstack([numpy.kron(numpy.ones(self.N), -self.Q.dot(x_r)), -self.Q_n.dot(x_r), numpy.zeros(self.N * self.nu)])
+        self.q = numpy.hstack([numpy.kron(numpy.ones(self.N+1), -self.Q.dot(x_r)), numpy.zeros(self.N * self.nu)])
 
         self.l[:self.nx] = -x_0
         self.u[:self.nx] = -x_0
