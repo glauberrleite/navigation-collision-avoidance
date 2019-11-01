@@ -48,7 +48,7 @@
                                         <relative_minimum>-1000</relative_minimum>
                                         <type>0</type>
                                     </scale>
-                                    <topic>/setpoint</topic>
+                                    <topic>/setpoint_pos</topic>
                                     <type>geometry_msgs/Vector3</type>
                                 </y_axis>
                             </axes>
@@ -130,7 +130,7 @@
                         <visible>true</visible>
                     </legend>
                     <plot_rate>30</plot_rate>
-                    <title></title>
+                    <title>Untitled Curve</title>
                 </column_0>
                 <column_1>
                     <axes>
@@ -173,7 +173,7 @@
                                         <relative_minimum>-1000</relative_minimum>
                                         <type>0</type>
                                     </scale>
-                                    <topic>/setpoint</topic>
+                                    <topic>/setpoint_pos</topic>
                                     <type>geometry_msgs/Vector3</type>
                                 </y_axis>
                             </axes>
@@ -255,7 +255,7 @@
                         <visible>true</visible>
                     </legend>
                     <plot_rate>30</plot_rate>
-                    <title></title>
+                    <title>Untitled Curve</title>
                 </column_1>
             </row_0>
             <row_1>
@@ -331,7 +331,7 @@
                         <visible>true</visible>
                     </legend>
                     <plot_rate>30</plot_rate>
-                    <title></title>
+                    <title>Untitled Curve</title>
                 </column_0>
                 <column_1>
                     <axes>
@@ -405,7 +405,7 @@
                         <visible>true</visible>
                     </legend>
                     <plot_rate>30</plot_rate>
-                    <title></title>
+                    <title>Untitled Curve</title>
                 </column_1>
             </row_1>
         </plots>

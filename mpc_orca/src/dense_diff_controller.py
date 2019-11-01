@@ -138,9 +138,8 @@ for i, agent in enumerate(agents):
 
 rospy.wait_for_message('/clock', Clock)
 
-initial = np.copy(X)
-
 # Global path planning
+initial = np.copy(X)
 setting_time = 20.0
 P_des = lambda t, i: (t > setting_time) * goal[i] + (t <= setting_time) * (goal[i] * (t/setting_time) + initial[i] * (1 - t/setting_time))
 V_des = lambda t, i: (t > setting_time) * np.zeros(2) + (t <= setting_time) * (goal[i] * (1/setting_time) - initial[i] * (1/setting_time))

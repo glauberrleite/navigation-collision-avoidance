@@ -9,7 +9,7 @@ from MPC_ORCA import MPC_ORCA
 from pyorca import Agent
 
 RADIUS = 0.5
-tau = 5
+tau = 10
 
 N = 10
 Ts = 0.1
@@ -90,6 +90,12 @@ for i, value in enumerate(data.name):
         idx = value.split('_')
         model[int(idx[1])] = i
 
+# Global path planning
+initial = np.copy(X)
+setting_time = 20.0
+P_des = lambda t, i: (t > setting_time) * goal[i] + (t <= setting_time) * (goal[i] * (t/setting_time) + initial[i] * (1 - t/setting_time))
+V_des = lambda t, i: (t > setting_time) * np.zeros(2) + (t <= setting_time) * (goal[i] * (1/setting_time) - initial[i] * (1/setting_time))
+
 t = 0
 while not rospy.is_shutdown():
     
@@ -106,11 +112,9 @@ while not rospy.is_shutdown():
         agents[i].velocity = controller[i].getNewVelocity(P_des, V_des)
     
         if i == 1:
-            setpoint_pos.x = P_des[0]
-            setpoint_pos.y = P_des[1]
+            [setpoint_pos.x, setpoint_pos.y] = P_des
 
-            setpoint_vel.x = V_des[0]
-            setpoint_vel.y = V_des[1]
+            [setpoint_vel.x, setpoint_vel.y] = V_des
 
     for i in xrange(len(X)):
         vel = Twist()
