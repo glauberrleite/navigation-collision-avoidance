@@ -48,7 +48,7 @@
                                         <relative_minimum>-1000</relative_minimum>
                                         <type>0</type>
                                     </scale>
-                                    <topic>/setpoint_pos</topic>
+                                    <topic>/setpoint</topic>
                                     <type>geometry_msgs/Vector3</type>
                                 </y_axis>
                             </axes>
@@ -90,7 +90,7 @@
                                     <type>rosgraph_msgs/Clock</type>
                                 </x_axis>
                                 <y_axis>
-                                    <field>pose/pose/position/x</field>
+                                    <field>pose/1/position/x</field>
                                     <field_type>0</field_type>
                                     <scale>
                                         <absolute_maximum>1000</absolute_maximum>
@@ -99,8 +99,8 @@
                                         <relative_minimum>-1000</relative_minimum>
                                         <type>0</type>
                                     </scale>
-                                    <topic>/robot_4/odom</topic>
-                                    <type>nav_msgs/Odometry</type>
+                                    <topic>/gazebo/model_states</topic>
+                                    <type>gazebo_msgs/ModelStates</type>
                                 </y_axis>
                             </axes>
                             <color>
@@ -130,7 +130,7 @@
                         <visible>true</visible>
                     </legend>
                     <plot_rate>30</plot_rate>
-                    <title>Untitled Curve</title>
+                    <title></title>
                 </column_0>
                 <column_1>
                     <axes>
@@ -173,7 +173,7 @@
                                         <relative_minimum>-1000</relative_minimum>
                                         <type>0</type>
                                     </scale>
-                                    <topic>/setpoint_pos</topic>
+                                    <topic>/setpoint</topic>
                                     <type>geometry_msgs/Vector3</type>
                                 </y_axis>
                             </axes>
@@ -215,7 +215,7 @@
                                     <type>rosgraph_msgs/Clock</type>
                                 </x_axis>
                                 <y_axis>
-                                    <field>pose/pose/position/y</field>
+                                    <field>pose/1/position/y</field>
                                     <field_type>0</field_type>
                                     <scale>
                                         <absolute_maximum>1000</absolute_maximum>
@@ -224,8 +224,8 @@
                                         <relative_minimum>-1000</relative_minimum>
                                         <type>0</type>
                                     </scale>
-                                    <topic>/robot_4/odom</topic>
-                                    <type>nav_msgs/Odometry</type>
+                                    <topic>/gazebo/model_states</topic>
+                                    <type>gazebo_msgs/ModelStates</type>
                                 </y_axis>
                             </axes>
                             <color>
@@ -255,7 +255,7 @@
                         <visible>true</visible>
                     </legend>
                     <plot_rate>30</plot_rate>
-                    <title>Untitled Curve</title>
+                    <title></title>
                 </column_1>
             </row_0>
             <row_1>
@@ -291,7 +291,7 @@
                                     <type>rosgraph_msgs/Clock</type>
                                 </x_axis>
                                 <y_axis>
-                                    <field>linear/x</field>
+                                    <field></field>
                                     <field_type>0</field_type>
                                     <scale>
                                         <absolute_maximum>1000</absolute_maximum>
@@ -331,7 +331,7 @@
                         <visible>true</visible>
                     </legend>
                     <plot_rate>30</plot_rate>
-                    <title>Untitled Curve</title>
+                    <title></title>
                 </column_0>
                 <column_1>
                     <axes>
@@ -405,7 +405,7 @@
                         <visible>true</visible>
                     </legend>
                     <plot_rate>30</plot_rate>
-                    <title>Untitled Curve</title>
+                    <title></title>
                 </column_1>
             </row_1>
         </plots>

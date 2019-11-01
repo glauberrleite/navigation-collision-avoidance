@@ -13,15 +13,20 @@ tau = 5
 
 N = 10
 Ts = 0.1
-X = [[-7., 0.], [7., 0.], [0, 7.], [0., -7.]]
+X = []
+X.append(np.array([-7., 0.]))
+X.append(np.array([7., 0.]))
+X.append(np.array([0, 7.]))
+X.append(np.array([0., -7.]))
 orientation = [0, np.pi, -np.pi/2, np.pi/2]
-#X = [[-7., 0.], [7., 0.]]
-#orientation = [0, np.pi]
 V = [[0., 0.] for _ in xrange(len(X))]
 V_min = [-1.0 for _ in xrange(len(X))]
 V_max = [1.0 for _ in xrange(len(X))]
-goal = [[7., 0.], [-7., 0.], [0.0, -7.], [0., 7.]]
-#goal = [[7., 0.], [-7., 0.]]
+goal = []
+goal.append(np.array([7., 0.]))
+goal.append(np.array([-7., 0.]))
+goal.append(np.array([0., -7.]))
+goal.append(np.array([0., 7.]))
 model = [i+1 for i in xrange(len(X))]
 
 agents = []
@@ -85,6 +90,7 @@ for i, value in enumerate(data.name):
         idx = value.split('_')
         model[int(idx[1])] = i
 
+t = 0
 while not rospy.is_shutdown():
     
     agents = update_positions(agents)
@@ -115,3 +121,5 @@ while not rospy.is_shutdown():
     pub_setpoint_pos.publish(setpoint_pos)
     pub_setpoint_vel.publish(setpoint_vel)
     rospy.sleep(Ts)
+
+    t += Ts
