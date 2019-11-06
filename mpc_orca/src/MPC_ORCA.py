@@ -28,7 +28,7 @@ class MPC_ORCA:
         self.Ts = Ts
         self.tau = tau
 
-        self.agent = Agent(position, [0., 0.], robot_radius)
+        self.agent = Agent(position, numpy.zeros(2), numpy.zeros(2), robot_radius)
         self.colliders = colliders
 
         # Linear Dynamics
@@ -59,7 +59,7 @@ class MPC_ORCA:
         x_0 = numpy.array([position[0], position[1], 0., 0.])
 
         # Setpoint
-        x_r = numpy.array([position[0], position[1], 0., 0.])
+        x_r = x_0
 
         # MPC objective function
         Q = sparse.diags([1., 1., 1., 1.])
@@ -125,10 +125,10 @@ class MPC_ORCA:
 
         # Predict future states with constant velocity, i.e. no acceleration
         for k in range(self.N):
-            agent_k = Agent(self.agent.position + k * self.agent.velocity * self.Ts, self.agent.velocity, self.agent.radius)
+            agent_k = Agent(self.agent.position + k * self.agent.velocity * self.Ts, self.agent.velocity, numpy.zeros(2), self.agent.radius)
 
             for i, collider in enumerate(self.colliders):
-                collider_k = Agent(collider.position + k * collider.velocity * self.Ts, collider.velocity, collider.radius)
+                collider_k = Agent(collider.position + k * collider.velocity * self.Ts, collider.velocity, numpy.zeros(2), collider.radius)
 
                 # Dicovering ORCA half-space
                 v0, n = orca(agent_k, collider_k, self.tau, self.Ts)
@@ -145,11 +145,11 @@ class MPC_ORCA:
 
         if result.info.status == 'solved':
             # return the first resulting velocity after control action
-            return result.x[(self.nx + 2):(self.nx + 4)]
+            return [result.x[(self.nx + 2):(self.nx + 4)], result.x[-self.N*self.nu:-(self.N-1)*self.nu]]
         else:
             print('unsolved')
-            #return numpy.array([self.agent.velocity[0], self.agent.velocity[1]])
-            damping = 0.05
-            return numpy.array([self.agent.velocity[0] - numpy.sign(self.agent.velocity[0])*damping, self.agent.velocity[1] - numpy.sign(self.agent.velocity[1])*damping])
+            return [numpy.array([self.agent.velocity[0], self.agent.velocity[1]]), numpy.zeros(2)]
+            #damping = 0.05
+            #return numpy.array([self.agent.velocity[0] - numpy.sign(self.agent.velocity[0])*damping, self.agent.velocity[1] - numpy.sign(self.agent.velocity[1])*damping])
         
     

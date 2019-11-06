@@ -12,17 +12,25 @@ tau = 5
 
 N = 10
 Ts = 0.1
-X = [[-5., 0.], [5., 0.], [0.0, 5.], [0., -5.]]
+X = []
+X.append(np.array([-5., 0.]))
+X.append(np.array([5., 0.]))
+X.append(np.array([0, 5.]))
+X.append(np.array([0., -5.]))
 orientation = [0, np.pi, -np.pi/2, np.pi/2]
 V = [[0., 0.] for _ in xrange(len(X))]
 V_min = [-1.0 for _ in xrange(len(X))]
 V_max = [1.0 for _ in xrange(len(X))]
-goal = [[5.0, 0.0], [-5.0, 0.0], [0.0, -5.0], [0.0, 5.0]]
+goal = []
+goal.append(np.array([5., 0.]))
+goal.append(np.array([-5., 0.]))
+goal.append(np.array([0., -5.]))
+goal.append(np.array([0., 5.]))
 
 agents = []
 
 for i in xrange(len(X)):
-    agents.append(Agent(X[i], [0., 0.], RADIUS))
+    agents.append(Agent(X[i], np.zeros(2), np.zeros(2), RADIUS))
 
 def velocityTransform(v, theta_0):
     angular = np.arctan2(v[1], v[0]) - theta_0 
@@ -82,7 +90,12 @@ t = 0
 controller = []
 for i, agent in enumerate(agents):
     colliders = agents[:i] + agents[i + 1:]
-    controller.append(MPC_ORCA(goal[i], agent.position, V_min[i], V_max[i], N, Ts, colliders, tau, agent.radius))
+    controller.append(MPC_ORCA(agent.position, V_min[i], V_max[i], N, Ts, colliders, tau, agent.radius))
+
+initial = np.copy(X)
+setting_time = 20.0
+P_des = lambda t, i: (t > setting_time) * goal[i] + (t <= setting_time) * (goal[i] * (t/setting_time) + initial[i] * (1 - t/setting_time))
+V_des = lambda t, i: (t > setting_time) * np.zeros(2) + (t <= setting_time) * (goal[i] * (1/setting_time) - initial[i] * (1/setting_time))
 
 while not rospy.is_shutdown():
     
@@ -91,7 +104,7 @@ while not rospy.is_shutdown():
     for i, agent in enumerate(agents):
         controller[i].agent = agents[i]
         controller[i].colliders = agents[:i] + agents[i + 1:]
-        agents[i].velocity = controller[i].getNewVelocity()
+        [agents[i].velocity, agents[i].acceleration] = controller[i].getNewVelocity(P_des(t, i), V_des(t, i))
 
     vel_0 = Twist()
     

@@ -38,11 +38,12 @@ from numpy.linalg import det
 
 class Agent(object):
     """A disk-shaped agent."""
-    def __init__(self, position, velocity, radius):
+    def __init__(self, position, velocity, acceleration, radius):
         super(Agent, self).__init__()
         self.position = array(position)
         self.velocity = array(velocity)
         self.radius = radius
+        self.acceleration = acceleration
 
 
 def orca(agent, colliding_agent, t, dt):

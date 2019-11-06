@@ -8,7 +8,7 @@ from rosgraph_msgs.msg import Clock
 from MPC_ORCA import MPC_ORCA
 from pyorca import Agent
 
-RADIUS = 0.5
+RADIUS = 0.3
 tau = 10
 
 N = 10
@@ -20,8 +20,8 @@ X.append(np.array([0, 7.]))
 X.append(np.array([0., -7.]))
 orientation = [0, np.pi, -np.pi/2, np.pi/2]
 V = [[0., 0.] for _ in xrange(len(X))]
-V_min = [-1.0 for _ in xrange(len(X))]
-V_max = [1.0 for _ in xrange(len(X))]
+V_min = [-0.5 for _ in xrange(len(X))]
+V_max = [0.5 for _ in xrange(len(X))]
 goal = []
 goal.append(np.array([7., 0.]))
 goal.append(np.array([-7., 0.]))
@@ -32,16 +32,18 @@ model = [i+1 for i in xrange(len(X))]
 agents = []
 
 for i in xrange(len(X)):
-    agents.append(Agent(X[i], [0., 0.], RADIUS))
+    agents.append(Agent(X[i], np.zeros(2), np.zeros(2), RADIUS))
 
-def velocityTransform(v, theta_0):
-    angular = np.arctan2(v[1], v[0]) - theta_0 
+def velocityTransform(v, a, theta_0):
+    
     linear = np.sqrt(v[0]**2 + v[1]**2)
+    #angular = (v[0]*a[1] - v[1]*a[0])/linear
+    angular = np.arctan2(v[1], v[0]) - theta_0 
 
     # Handling singularity
     if np.abs(angular) > np.pi:
         angular -= np.sign(angular) * 2 * np.pi
-
+ 
     return [linear, angular]
 
 def update_positions(agents):
@@ -95,6 +97,7 @@ initial = np.copy(X)
 setting_time = 20.0
 P_des = lambda t, i: (t > setting_time) * goal[i] + (t <= setting_time) * (goal[i] * (t/setting_time) + initial[i] * (1 - t/setting_time))
 V_des = lambda t, i: (t > setting_time) * np.zeros(2) + (t <= setting_time) * (goal[i] * (1/setting_time) - initial[i] * (1/setting_time))
+#V_des = lambda t, i: (t > setting_time) * np.zeros(2) + (t <= setting_time) * (P_des(t, i) - X[i])
 
 t = 0
 while not rospy.is_shutdown():
@@ -103,22 +106,19 @@ while not rospy.is_shutdown():
 
     for i, agent in enumerate(agents):
         # Computing desired velocity
-        V_des = goal[i] - X[i]
-        P_des = X[i] + V_des * Ts
-
         controller[i].agent = agents[i]
         controller[i].colliders = agents[:i] + agents[i + 1:]
 
-        agents[i].velocity = controller[i].getNewVelocity(P_des, V_des)
+        [agents[i].velocity, agents[i].acceleration] = controller[i].getNewVelocity(P_des(t, i), V_des(t, i))
     
         if i == 1:
-            [setpoint_pos.x, setpoint_pos.y] = P_des
+            [setpoint_pos.x, setpoint_pos.y] = P_des(t, i)
 
-            [setpoint_vel.x, setpoint_vel.y] = V_des
+            [setpoint_vel.x, setpoint_vel.y] = V_des(t, i)
 
     for i in xrange(len(X)):
         vel = Twist()
-        [vel.linear.x, vel.angular.z] = velocityTransform(agents[i].velocity, orientation[i])
+        [vel.linear.x, vel.angular.z] = velocityTransform(agents[i].velocity, agents[i].acceleration, orientation[i])
 
         pub[i].publish(vel)
     

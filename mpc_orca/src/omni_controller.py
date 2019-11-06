@@ -21,7 +21,7 @@ goal = [[5.0, 0.0], [-5.0, 0.0], [0.0, -5.0], [0.0, 5.0]]
 agents = []
 
 for i in xrange(len(X)):
-    agents.append(Agent(X[i], [0., 0.], RADIUS))
+    agents.append(Agent(X[i], np.zeros(2), np.zeros(2), RADIUS))
 
 def update_positions(agents):
     for i in xrange(len(X)):
@@ -63,7 +63,7 @@ while not rospy.is_shutdown():
     for i, agent in enumerate(agents):
         controller[i].agent = agents[i]
         controller[i].colliders = agents[:i] + agents[i + 1:]
-        agents[i].velocity = controller[i].getNewVelocity()
+        [agents[i].velocity, agents[i].acceleration] = controller[i].getNewVelocity()
 
     vel_0 = Twist()
     vel_0.linear.x = agents[0].velocity[0]

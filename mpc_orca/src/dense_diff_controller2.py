@@ -23,7 +23,7 @@ goal = [[10., 0.], [-10., 0.], [0.0, -10.], [0., 10.], [10., -10.], [10., 10.], 
 agents = []
 
 for i in xrange(len(X)):
-    agents.append(Agent(X[i], [0., 0.], RADIUS))
+    agents.append(Agent(X[i], np.zeros(2), np.zeros(2), RADIUS))
 
 def velocityTransform(v, theta_0):
     angular = np.arctan2(v[1], v[0]) - theta_0 
@@ -129,7 +129,7 @@ while not rospy.is_shutdown():
     for i, agent in enumerate(agents):
         controller[i].agent = agents[i]
         controller[i].colliders = agents[:i] + agents[i + 1:]
-        agents[i].velocity = controller[i].getNewVelocity()
+        [agents[i].velocity, agents[i].acceleration] = controller[i].getNewVelocity()
 
     for i in xrange(len(X)):
         vel = Twist()
