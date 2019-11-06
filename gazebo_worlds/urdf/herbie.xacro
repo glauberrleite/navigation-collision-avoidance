@@ -3,30 +3,38 @@
     <xacro:include filename="$(find gazebo_worlds)/urdf/herbie.gazebo" />
     <xacro:include filename="$(find gazebo_worlds)/urdf/macros.xacro" />
     
-        <link name="link_chassis">
+    <link name="link_chassis">
         <!-- pose and inertial -->
         <pose>0 0 0 0 0 0</pose>
         <inertial>
-            <mass value="1"/>
-            <origin rpy="0 0 0" xyz="0 0 0.079625"/>
-            <xacro:cylinder_inertia mass="1" r="0.075" l="0.11125" />
+            <mass value="0.6"/>
+            <origin rpy="0 0 0" xyz="0 0 0.074"/>
+            <xacro:box_inertia mass="0.6" x="0.22" y="0.147" z="0.10"/>
         </inertial>
         <!-- body -->
         <collision name="collision_chassis">
-            <origin rpy="0 0 0" xyz="0 0 0.079625"/>
+            <origin rpy="0 0 0" xyz="0 0 0.074"/>
             <geometry>
-                <cylinder radius="0.075" length="0.11125"/>
+                <box size="0.22 0.147 0.10"/>
             </geometry>
         </collision>
         <visual>
-            <origin rpy="0 0 0" xyz="0 0 0.079625"/>
+            <origin rpy="0 0 0" xyz="0 0 0.074"/>
             <geometry>
-                <cylinder radius="0.075" length="0.11125"/>
+                <box size="0.22 0.147 0.10"/>
             </geometry>
         </visual>
+    </link>
+
+    <link name="link_caster_wheel">
         <!-- caster front -->
-        <collision name="caster_front_collision">
-            <origin rpy=" 0 0 0" xyz="0.04925 0 0.012"/>
+        <inertial>
+            <mass value="0.05"/>
+            <origin rpy="0 0 0" xyz="0 0 0"/>
+            <xacro:sphere_inertia mass="0.05" r="0.012"/>
+        </inertial>
+        <collision name="caster_wheel_collision">
+            <origin rpy="0 0 0" xyz="0 0 0"/>
             <geometry>
                 <sphere radius="0.012"/>
             </geometry>
@@ -41,17 +49,17 @@
                 </friction>
             </surface>
         </collision>
-        <visual name="caster_front_visual">
-        <origin rpy=" 0 0 0" xyz="0.04925 0 0.012"/>
-        <geometry>
-            <sphere radius="0.012"/>
-        </geometry>
+        <visual name="caster_wheel_visual">
+            <origin rpy="0 0 0" xyz="0 0 0"/>
+            <geometry>
+                <sphere radius="0.012"/>
+            </geometry>
         </visual>
     </link>
   
     <link name="link_right_wheel">
         <inertial>
-            <mass value="0.1"/>
+            <mass value="0.125"/>
             <origin rpy="0 0 0" xyz="0 0 0"/>
             <xacro:cylinder_inertia mass="0.1" r="0.0313" l="0.025" />
         </inertial>
@@ -71,7 +79,7 @@
 
     <link name="link_left_wheel">
         <inertial>
-            <mass value="0.1"/>
+            <mass value="0.125"/>
             <origin rpy="0 0 0" xyz="0 0 0"/>
             <xacro:cylinder_inertia mass="0.1" r="0.0313" l="0.025" />
         </inertial>
@@ -90,21 +98,28 @@
     </link>
 
     <joint name="joint_right_wheel" type="continuous">
-        <origin rpy="-1.5708 0 0" xyz="0 -0.054 0.03125"/>
+        <origin rpy="-1.5708 0 0" xyz="-0.05 -0.054 0.03125"/>
         <child link="link_right_wheel"/>
         <parent link="link_chassis"/>
         <axis rpy="0 0 0" xyz="0 0 1"/>
-        <limit effort="10000" velocity="1000"/>
+        <limit effort="100" velocity="1"/>
         <joint_properties damping="1.0" friction="1.0"/>
     </joint>
 
     <joint name="joint_left_wheel" type="continuous">
-        <origin rpy="-1.5708 0 0" xyz="0 0.054 0.03125"/>
+        <origin rpy="-1.5708 0 0" xyz="-0.05 0.054 0.03125"/>
         <child link="link_left_wheel"/>
         <parent link="link_chassis"/>
         <axis rpy="0 0 0" xyz="0 0 1"/>
-        <limit effort="10000" velocity="1000"/>
+        <limit effort="100" velocity="1"/>
         <joint_properties damping="1.0" friction="1.0"/>
+    </joint>
+
+    <joint name="joint_caster_wheel" type="continuous">
+        <origin rpy="-1.5708 0 0" xyz="0.10 0 0.012"/>
+        <child link="link_caster_wheel"/>
+        <parent link="link_chassis"/>
+        <axis rpy="0 0 0" xyz="0 0 1"/>
     </joint>
 
 </robot>
