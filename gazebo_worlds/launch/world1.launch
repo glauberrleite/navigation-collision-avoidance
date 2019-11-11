@@ -12,7 +12,6 @@
 
 
   <!-- include our robots -->
-  <arg name="model" default="waffle" doc="model type [burger, waffle, waffle_pi]"/>
   <arg name="first_tb3"  default="robot_0"/>
   <arg name="second_tb3" default="robot_1"/>
   <arg name="third_tb3"  default="robot_2"/>

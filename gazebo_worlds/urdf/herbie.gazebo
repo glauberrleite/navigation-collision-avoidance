@@ -1,6 +1,27 @@
 <?xml version="1.0"?>
 <robot xmlns:xacro="http://www.ros.org/wiki/xacro">
-  
+
+  <gazebo reference="link_caster_wheel">
+    <mu1>0</mu1>
+    <mu2>0</mu2>
+    <kp value="1.0e+9"/>
+    <kd value="5.0e+6"/>
+  </gazebo>
+
+  <gazebo reference="link_left_wheel">
+    <mu1 value="1.0e+6"/>
+    <mu2 value="1.0e+6"/>
+    <kp value="1.0e+9"/>
+    <kd value="5.0e+6"/>
+  </gazebo>
+
+  <gazebo reference="link_right_wheel">
+    <mu1 value="1.0e+6"/>
+    <mu2 value="1.0e+6"/>
+    <kp value="1.0e+9"/>
+    <kd value="5.0e+6"/>
+  </gazebo>
+
   <gazebo>
     <plugin filename="libgazebo_ros_diff_drive.so" name="differential_drive_controller">
       <alwaysOn>true</alwaysOn>
@@ -9,8 +30,8 @@
       <rightJoint>joint_right_wheel</rightJoint>
       <wheelSeparation>0.108</wheelSeparation>
       <wheelDiameter>0.0313</wheelDiameter>
-      <wheelAcceleration>10</wheelAcceleration>
-      <torque>10</torque>
+      <wheelAcceleration>1</wheelAcceleration>
+      <torque>100</torque>
       <commandTopic>cmd_vel</commandTopic>
       <odometryTopic>odom</odometryTopic>
       <odometryFrame>odom</odometryFrame>

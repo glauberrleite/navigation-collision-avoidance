@@ -52,8 +52,8 @@ class MPC_ORCA:
         # State constraints
         xmin = numpy.array([-numpy.inf, -numpy.inf, v_min, v_min])
         xmax = numpy.array([numpy.inf, numpy.inf, v_max, v_max])
-        umin = numpy.array([v_min/Ts, v_min/Ts])
-        umax = numpy.array([v_max/Ts, v_max/Ts])
+        umin = numpy.array([v_min, v_min])
+        umax = numpy.array([v_max, v_max])
 
         # Initial state
         x_0 = numpy.array([position[0], position[1], 0., 0.])

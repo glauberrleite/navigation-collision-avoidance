@@ -8,7 +8,7 @@ from rosgraph_msgs.msg import Clock
 from MPC_ORCA import MPC_ORCA
 from pyorca import Agent
 
-RADIUS = 0.3
+RADIUS = 0.4
 tau = 10
 
 N = 10
@@ -20,8 +20,8 @@ X.append(np.array([0, 7.]))
 X.append(np.array([0., -7.]))
 orientation = [0, np.pi, -np.pi/2, np.pi/2]
 V = [[0., 0.] for _ in xrange(len(X))]
-V_min = [-0.5 for _ in xrange(len(X))]
-V_max = [0.5 for _ in xrange(len(X))]
+V_min = [-1 for _ in xrange(len(X))]
+V_max = [1 for _ in xrange(len(X))]
 goal = []
 goal.append(np.array([7., 0.]))
 goal.append(np.array([-7., 0.]))
@@ -61,6 +61,14 @@ def updateWorld(msg):
 
 rospy.init_node('diff_controller')
 
+# Getting robot model order on gazebo model_states
+data = rospy.wait_for_message('/gazebo/model_states', ModelStates)
+for i, value in enumerate(data.name):
+    # Skipping i == 0 because it's the ground_plane state
+    if i > 0:
+        idx = value.split('_')
+        model[int(idx[1])] = i
+
 # Subscribing on model_states instead of robot/odom, to avoid unnecessary noise
 rospy.Subscriber('/gazebo/model_states', ModelStates, updateWorld)
 pub = []
@@ -84,20 +92,11 @@ for i, agent in enumerate(agents):
     colliders = agents[:i] + agents[i + 1:]
     controller.append(MPC_ORCA(agent.position, V_min[i], V_max[i], N, Ts, colliders, tau, agent.radius))
 
-# Getting robot model order on gazebo model_states
-data = rospy.wait_for_message('/gazebo/model_states', ModelStates)
-for i, value in enumerate(data.name):
-    # Skipping i == 0 because it's the ground_plane state
-    if i > 0:
-        idx = value.split('_')
-        model[int(idx[1])] = i
-
 # Global path planning
 initial = np.copy(X)
-setting_time = 20.0
+setting_time = 10.0
 P_des = lambda t, i: (t > setting_time) * goal[i] + (t <= setting_time) * (goal[i] * (t/setting_time) + initial[i] * (1 - t/setting_time))
 V_des = lambda t, i: (t > setting_time) * np.zeros(2) + (t <= setting_time) * (goal[i] * (1/setting_time) - initial[i] * (1/setting_time))
-#V_des = lambda t, i: (t > setting_time) * np.zeros(2) + (t <= setting_time) * (P_des(t, i) - X[i])
 
 t = 0
 while not rospy.is_shutdown():
@@ -111,7 +110,7 @@ while not rospy.is_shutdown():
 
         [agents[i].velocity, agents[i].acceleration] = controller[i].getNewVelocity(P_des(t, i), V_des(t, i))
     
-        if i == 1:
+        if i == 0:
             [setpoint_pos.x, setpoint_pos.y] = P_des(t, i)
 
             [setpoint_vel.x, setpoint_vel.y] = V_des(t, i)

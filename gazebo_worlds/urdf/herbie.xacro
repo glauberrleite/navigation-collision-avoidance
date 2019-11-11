@@ -5,11 +5,11 @@
     
     <link name="link_chassis">
         <!-- pose and inertial -->
-        <pose>0.0 0 0 0 0 0</pose>
+        <pose>0 0 0 0 0 0</pose>
         <inertial>
-            <mass value="0.6"/>
+            <mass value="0.7"/>
             <origin rpy="0 0 0" xyz="0.05 0 0.074"/>
-            <xacro:box_inertia mass="0.6" x="0.22" y="0.147" z="0.10"/>
+            <xacro:box_inertia mass="0.7" x="0.22" y="0.147" z="0.10"/>
         </inertial>
         <!-- body -->
         <collision name="collision_chassis">
