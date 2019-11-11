@@ -112,9 +112,8 @@ while not rospy.is_shutdown():
         controller[i].colliders = agents[:i] + agents[i + 1:]
 
         # Updating setpoint trajectory
-        setpoint = np.hstack([P_des(t + k * Ts, i), V_des(t + k * Ts, i) for k in range(0, N + 1)])
+        setpoint = np.ravel([np.append(P_des(t + k * Ts, i), V_des(t + k * Ts, i)) for k in range(0, N + 1)])
 
-        print(setpoint)
         # Computing optimal input values
         [agents[i].velocity, agents[i].acceleration] = controller[i].getNewVelocity(setpoint)
     
