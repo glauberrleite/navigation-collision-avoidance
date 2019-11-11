@@ -96,10 +96,10 @@ for i, agent in enumerate(agents):
 initial = np.copy(X)
 t0 = 3.0
 growth = 0.9
-logistic = lambda t, t0, growth: 1/(1 + np.exp(- growth * (t - t0)))
-d_logistic = lambda t, t0, growth: growth * logistic(t, t0, growth) * (1 - logistic(t, t0, growth))
-P_des = lambda t, i: goal[i] * logistic(t, t0, growth) + initial[i] * (1 - logistic(t, t0, growth))
-V_des = lambda t, i: goal[i] * d_logistic(t, t0, growth) - initial[i] * d_logistic(t, t0, growth)
+logistic = lambda t: 1/(1 + np.exp(- growth * (t - t0)))
+d_logistic = lambda t: growth * logistic(t) * (1 - logistic(t))
+P_des = lambda t, i: goal[i] * logistic(t) + initial[i] * (1 - logistic(t))
+V_des = lambda t, i: goal[i] * d_logistic(t) - initial[i] * d_logistic(t)
 
 t = 0
 while not rospy.is_shutdown():
@@ -107,11 +107,16 @@ while not rospy.is_shutdown():
     agents = update_positions(agents)
 
     for i, agent in enumerate(agents):
-        # Computing desired velocity
+        # Updating controller agents
         controller[i].agent = agents[i]
         controller[i].colliders = agents[:i] + agents[i + 1:]
 
-        [agents[i].velocity, agents[i].acceleration] = controller[i].getNewVelocity(P_des(t, i), V_des(t, i))
+        # Updating setpoint trajectory
+        setpoint = np.hstack([P_des(t + k * Ts, i), V_des(t + k * Ts, i) for k in range(0, N + 1)])
+
+        print(setpoint)
+        # Computing optimal input values
+        [agents[i].velocity, agents[i].acceleration] = controller[i].getNewVelocity(setpoint)
     
         if i == 0:
             [setpoint_pos.x, setpoint_pos.y] = P_des(t, i)

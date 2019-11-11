@@ -113,12 +113,12 @@ class MPC_ORCA:
         self.problem = osqp.OSQP()
         self.problem.setup(P, self.q, self.A, self.l, self.u, warm_start=True, verbose=False)
 
-    def getNewVelocity(self, setpoint_pos, setpoint_vel):
+    def getNewVelocity(self, setpoint):
         # Updating initial conditions
         x_0 = numpy.array([self.agent.position[0], self.agent.position[1], self.agent.velocity[0], self.agent.velocity[1]])
-        x_r = numpy.array([setpoint_pos[0], setpoint_pos[1], setpoint_vel[0], setpoint_vel[1]])
         
-        self.q = numpy.hstack([numpy.kron(numpy.ones(self.N+1), -self.Q.dot(x_r)), numpy.zeros(self.N * self.nu)])
+        #self.q = numpy.hstack([numpy.kron(numpy.ones(self.N+1), -self.Q.dot(x_r)), numpy.zeros(self.N * self.nu)])
+        self.q = numpy.hstack([numpy.dot(numpy.kron(numpy.eye(self.N+1), -self.Q), setpoint), numpy.zeros(self.N * self.nu)])
 
         self.l[:self.nx] = -x_0
         self.u[:self.nx] = -x_0
