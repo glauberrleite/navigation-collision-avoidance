@@ -94,9 +94,12 @@ for i, agent in enumerate(agents):
 
 # Global path planning
 initial = np.copy(X)
-setting_time = 10.0
-P_des = lambda t, i: (t > setting_time) * goal[i] + (t <= setting_time) * (goal[i] * (t/setting_time) + initial[i] * (1 - t/setting_time))
-V_des = lambda t, i: (t > setting_time) * np.zeros(2) + (t <= setting_time) * (goal[i] * (1/setting_time) - initial[i] * (1/setting_time))
+t0 = 3.0
+growth = 0.9
+logistic = lambda t, t0, growth: 1/(1 + np.exp(- growth * (t - t0)))
+d_logistic = lambda t, t0, growth: growth * logistic(t, t0, growth) * (1 - logistic(t, t0, growth))
+P_des = lambda t, i: goal[i] * logistic(t, t0, growth) + initial[i] * (1 - logistic(t, t0, growth))
+V_des = lambda t, i: goal[i] * d_logistic(t, t0, growth) - initial[i] * d_logistic(t, t0, growth)
 
 t = 0
 while not rospy.is_shutdown():
