@@ -3,12 +3,13 @@
 import rospy
 import numpy as np
 from nav_msgs.msg import Odometry
-from geometry_msgs.msg import Twist
+from geometry_msgs.msg import Twist, Vector3
+from rosgraph_msgs.msg import Clock
 from MPC_ORCA import MPC_ORCA
 from pyorca import Agent
 
 RADIUS = 0.5
-tau = 5
+tau = 15
 
 N = 10
 Ts = 0.1
@@ -80,11 +81,17 @@ sub_0 = rospy.Subscriber('/robot_0/odom', Odometry, callback_0)
 sub_1 = rospy.Subscriber('/robot_1/odom', Odometry, callback_1)
 sub_2 = rospy.Subscriber('/robot_2/odom', Odometry, callback_2)
 sub_3 = rospy.Subscriber('/robot_3/odom', Odometry, callback_3)
-pub_0 = rospy.Publisher('/robot_0/cmd_vel', Twist, queue_size=10)
-pub_1 = rospy.Publisher('/robot_1/cmd_vel', Twist, queue_size=10)
-pub_2 = rospy.Publisher('/robot_2/cmd_vel', Twist, queue_size=10)
-pub_3 = rospy.Publisher('/robot_3/cmd_vel', Twist, queue_size=10)
-t = 0
+pub = []
+pub.append(rospy.Publisher('/robot_0/cmd_vel', Twist, queue_size=10))
+pub.append(rospy.Publisher('/robot_1/cmd_vel', Twist, queue_size=10))
+pub.append(rospy.Publisher('/robot_2/cmd_vel', Twist, queue_size=10))
+pub.append(rospy.Publisher('/robot_3/cmd_vel', Twist, queue_size=10))
+
+pub_setpoint_pos = rospy.Publisher('/setpoint_pos', Vector3, queue_size=10)
+pub_setpoint_vel = rospy.Publisher('/setpoint_vel', Vector3, queue_size=10)
+
+setpoint_pos = Vector3()
+setpoint_vel = Vector3()
 
 # Initializing Controllers
 controller = []
@@ -97,12 +104,16 @@ for i, agent in enumerate(agents):
 #P_des = lambda t, i: (t > setting_time) * goal[i] + (t <= setting_time) * (goal[i] * (t/setting_time) + initial[i] * (1 - t/setting_time))
 #V_des = lambda t, i: (t > setting_time) * np.zeros(2) + (t <= setting_time) * (goal[i] * (1/setting_time) - initial[i] * (1/setting_time))
 initial = np.copy(X)
-t0 = 3.0
-growth = 0.9
-logistic = lambda t: 1/(1 + np.exp(- growth * (t - t0)))
+t0 = 10.0
+growth = 0.5
+logistic = lambda t: 1/(1 + np.exp(- growth * (t - t0/growth)))
 d_logistic = lambda t: growth * logistic(t) * (1 - logistic(t))
 P_des = lambda t, i: goal[i] * logistic(t) + initial[i] * (1 - logistic(t))
 V_des = lambda t, i: goal[i] * d_logistic(t) - initial[i] * d_logistic(t)
+
+rospy.wait_for_message('/clock', Clock)
+
+t = 0
 
 while not rospy.is_shutdown():
     
@@ -113,44 +124,22 @@ while not rospy.is_shutdown():
         controller[i].colliders = agents[:i] + agents[i + 1:]
 
         # Updating setpoint trajectory
-        setpoint = np.ravel([np.append(P_des(t + 0 * Ts, i), V_des(t + 0 * Ts, i)) for k in range(0, N + 1)])
+        setpoint = np.ravel([np.append(P_des(t + k * Ts, i), V_des(t + k * Ts, i)) for k in range(0, N + 1)])
 
         [agents[i].velocity, agents[i].acceleration] = controller[i].getNewVelocity(setpoint)
 
-    vel_0 = Twist()
-    
-    [linear_vel_0, angular_vel_0] = velocityTransform(agents[0].velocity, orientation[0])
-    
-    vel_0.linear.x = linear_vel_0
-    vel_0.angular.z = angular_vel_0
+        if i == 0:
+            [setpoint_pos.x, setpoint_pos.y] = P_des(t, i)
+            [setpoint_vel.x, setpoint_vel.y] = V_des(t, i)
 
-    vel_1 = Twist()
-    
-    [linear_vel_1, angular_vel_1] = velocityTransform(agents[1].velocity, orientation[1])
-    
-    vel_1.linear.x = linear_vel_1
-    vel_1.angular.z = angular_vel_1
-    
-    vel_2 = Twist()
-    
-    [linear_vel_2, angular_vel_2] = velocityTransform(agents[2].velocity, orientation[2])
-    
-    vel_2.linear.x = linear_vel_2
-    vel_2.angular.z = angular_vel_2
-    
-    vel_3 = Twist()
-    
-    [linear_vel_3, angular_vel_3] = velocityTransform(agents[3].velocity, orientation[3])
+    for i in xrange(len(X)):
+        vel = Twist()
+        [vel.linear.x, vel.angular.z] = velocityTransform(agents[i].velocity, orientation[i])
 
-    vel_3.linear.x = linear_vel_3
-    vel_3.angular.z = angular_vel_3
+        pub[i].publish(vel)
+    
+    pub_setpoint_pos.publish(setpoint_pos)
+    pub_setpoint_vel.publish(setpoint_vel)
 
-    pub_0.publish(vel_0)
-    pub_1.publish(vel_1)
-    pub_2.publish(vel_2)
-    pub_3.publish(vel_3)
-
-    #if t%100:
-    #    print(X)
-    #t += 1
     rospy.sleep(Ts)
+    t += Ts
