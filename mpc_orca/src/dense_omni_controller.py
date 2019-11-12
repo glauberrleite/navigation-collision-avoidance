@@ -13,11 +13,27 @@ tau = 15
 
 N = 10
 Ts = 0.1
-X = [[-10., 0.], [10., 0.], [0.0, 10.], [0., -10.], [-10., 10.], [-10., -10.], [10.0, -10.], [10., 10.]]
+X = []
+X.append(np.array([-10., 0.]))
+X.append(np.array([10., 0.]))
+X.append(np.array([0, 10.]))
+X.append(np.array([0., -10.]))
+X.append(np.array([-10., 10.]))
+X.append(np.array([-10., -10.]))
+X.append(np.array([10, -10.]))
+X.append(np.array([10., 10.]))
 V = [[0., 0.] for _ in xrange(len(X))]
 V_min = [-1.0 for _ in xrange(len(X))]
 V_max = [1.0 for _ in xrange(len(X))]
-goal = [[10., 0.], [-10., 0.], [0.0, -10.], [0., 10.], [10., -10.], [10., 10.], [-10.0, 10.], [-10., -10.]]
+goal = []
+goal.append(np.array([10., 0.]))
+goal.append(np.array([-10., 0.]))
+goal.append(np.array([0., -10.]))
+goal.append(np.array([0., 10.]))
+goal.append(np.array([10., -10.]))
+goal.append(np.array([10., 10.]))
+goal.append(np.array([-10., 10.]))
+goal.append(np.array([-10., -10.]))
 
 agents = []
 
@@ -78,28 +94,36 @@ for i, agent in enumerate(agents):
     colliders = agents[:i] + agents[i + 1:]
     controller.append(MPC_ORCA(agent.position, V_min[i], V_max[i], N, Ts, colliders, tau, agent.radius))
 
+initial = np.copy(X)
+t0 = 3.0
+growth = 0.9
+logistic = lambda t: 1/(1 + np.exp(- growth * (t - t0)))
+d_logistic = lambda t: growth * logistic(t) * (1 - logistic(t))
+P_des = lambda t, i: goal[i] * logistic(t) + initial[i] * (1 - logistic(t))
+V_des = lambda t, i: goal[i] * d_logistic(t) - initial[i] * d_logistic(t)
+
 rospy.wait_for_message('/clock', Clock)
+
+t = 0
 
 while not rospy.is_shutdown():
     
     agents = update_positions(agents)
 
     for i, agent in enumerate(agents):
-        # Computing desired velocity
-        V_des = goal[i] - X[i]
-        P_des = X[i] + V_des * Ts
 
         controller[i].agent = agents[i]
         controller[i].colliders = agents[:i] + agents[i + 1:]
 
-        [agents[i].velocity, agents[i].acceleration] = controller[i].getNewVelocity(P_des, V_des)
+        # Updating setpoint trajectory
+        setpoint = np.ravel([np.append(P_des(t + 0 * Ts, i), V_des(t + 0 * Ts, i)) for k in range(0, N + 1)])
 
-        if i == 2:
-            setpoint_pos.x = P_des[0]
-            setpoint_pos.y = P_des[1]
+        [agents[i].velocity, agents[i].acceleration] = controller[i].getNewVelocity(setpoint)
 
-            setpoint_vel.x = V_des[0]
-            setpoint_vel.y = V_des[1]
+        if i == 4:
+            [setpoint_pos.x, setpoint_pos.y] = P_des(t, i)
+
+            [setpoint_vel.x, setpoint_vel.y] = V_des(t, i)
 
     for i in xrange(len(X)):
         vel = Twist()
@@ -112,3 +136,4 @@ while not rospy.is_shutdown():
     pub_setpoint_vel.publish(setpoint_vel)
 
     rospy.sleep(Ts)
+    t += Ts

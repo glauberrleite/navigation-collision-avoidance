@@ -92,10 +92,17 @@ for i, agent in enumerate(agents):
     colliders = agents[:i] + agents[i + 1:]
     controller.append(MPC_ORCA(agent.position, V_min[i], V_max[i], N, Ts, colliders, tau, agent.radius))
 
+#initial = np.copy(X)
+#setting_time = 20.0
+#P_des = lambda t, i: (t > setting_time) * goal[i] + (t <= setting_time) * (goal[i] * (t/setting_time) + initial[i] * (1 - t/setting_time))
+#V_des = lambda t, i: (t > setting_time) * np.zeros(2) + (t <= setting_time) * (goal[i] * (1/setting_time) - initial[i] * (1/setting_time))
 initial = np.copy(X)
-setting_time = 20.0
-P_des = lambda t, i: (t > setting_time) * goal[i] + (t <= setting_time) * (goal[i] * (t/setting_time) + initial[i] * (1 - t/setting_time))
-V_des = lambda t, i: (t > setting_time) * np.zeros(2) + (t <= setting_time) * (goal[i] * (1/setting_time) - initial[i] * (1/setting_time))
+t0 = 3.0
+growth = 0.9
+logistic = lambda t: 1/(1 + np.exp(- growth * (t - t0)))
+d_logistic = lambda t: growth * logistic(t) * (1 - logistic(t))
+P_des = lambda t, i: goal[i] * logistic(t) + initial[i] * (1 - logistic(t))
+V_des = lambda t, i: goal[i] * d_logistic(t) - initial[i] * d_logistic(t)
 
 while not rospy.is_shutdown():
     
@@ -104,7 +111,11 @@ while not rospy.is_shutdown():
     for i, agent in enumerate(agents):
         controller[i].agent = agents[i]
         controller[i].colliders = agents[:i] + agents[i + 1:]
-        [agents[i].velocity, agents[i].acceleration] = controller[i].getNewVelocity(P_des(t, i), V_des(t, i))
+
+        # Updating setpoint trajectory
+        setpoint = np.ravel([np.append(P_des(t + 0 * Ts, i), V_des(t + 0 * Ts, i)) for k in range(0, N + 1)])
+
+        [agents[i].velocity, agents[i].acceleration] = controller[i].getNewVelocity(setpoint)
 
     vel_0 = Twist()
     
