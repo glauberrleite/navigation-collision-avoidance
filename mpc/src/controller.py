@@ -24,7 +24,7 @@ def velocityTransform(v, a, theta_0):
     if np.abs(angular) > np.pi:
         angular -= np.sign(angular) * 2 * np.pi
         linear = -linear
-    if linear < 0.01:
+    if np.abs(linear) < 0.01:
         angular = 0
         linear = 0        
  
