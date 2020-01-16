@@ -55,9 +55,9 @@ def updateWorld(msg):
     for i in xrange(len(X)):
         X[i] = np.array([float(msg.pose[model[i]].position.x), float(msg.pose[model[i]].position.y)])
         orientation[i] = 2 * np.arctan2(float(msg.pose[model[i]].orientation.z), float(msg.pose[model[i]].orientation.w))
-    if (orientation[i] > np.pi):
-        # For gazebo odom quaternion
-        orientation[i] = 2 * np.arctan2(-float(msg.pose[model[i]].orientation.z), -float(msg.pose[model[i]].orientation.w))
+        if (orientation[i] > np.pi):
+            # For gazebo odom quaternion
+            orientation[i] = 2 * np.arctan2(-float(msg.pose[model[i]].orientation.z), -float(msg.pose[model[i]].orientation.w))
 
 rospy.init_node('diff_controller')
 
@@ -112,10 +112,11 @@ while not rospy.is_shutdown():
         controller[i].colliders = agents[:i] + agents[i + 1:]
 
         # Updating setpoint trajectory
-        setpoint = np.ravel([np.append(P_des(t + 0 * Ts, i), V_des(t + 0 * Ts, i)) for k in range(0, N + 1)])
+        setpoint = np.ravel([np.append(P_des(t + k * Ts, i), V_des(t + k * Ts, i)) for k in range(0, N + 1)])
 
         # Computing optimal input values
         [agents[i].velocity, agents[i].acceleration] = controller[i].getNewVelocity(setpoint)
+        
     
         if i == 0:
             [setpoint_pos.x, setpoint_pos.y] = P_des(t, i)

@@ -147,8 +147,8 @@ class MPC_ORCA:
             return [result.x[(self.nx + 2):(self.nx + 4)], result.x[-self.N*self.nu:-(self.N-1)*self.nu]]
         else:
             print('unsolved')
-            return [numpy.array([self.agent.velocity[0], self.agent.velocity[1]]), numpy.zeros(2)]
-            #damping = 0.05
-            #return numpy.array([self.agent.velocity[0] - numpy.sign(self.agent.velocity[0])*damping, self.agent.velocity[1] - numpy.sign(self.agent.velocity[1])*damping])
+            #return [numpy.array([self.agent.velocity[0], self.agent.velocity[1]]), numpy.zeros(2)]
+            damping = 0.01
+            return [numpy.array([(1-damping)*self.agent.velocity[0], (1-damping)*self.agent.velocity[1] - numpy.sign(self.agent.velocity[1])*damping]), numpy.zeros(2)]
         
     

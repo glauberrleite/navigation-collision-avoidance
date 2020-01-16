@@ -18,24 +18,24 @@
   <arg name="fourth_tb3"  default="robot_3"/>
 
   <arg name="first_tb3_x_pos" default="-7.0"/>
-  <arg name="first_tb3_y_pos" default="0.0"/>
+  <arg name="first_tb3_y_pos" default="-7.0"/>
   <arg name="first_tb3_z_pos" default="0.0"/>
   <arg name="first_tb3_yaw"   default="0"/>
 
-  <arg name="second_tb3_x_pos" default="7.0"/>
-  <arg name="second_tb3_y_pos" default="0.0"/>
+  <arg name="second_tb3_x_pos" default="-7.0"/>
+  <arg name="second_tb3_y_pos" default="7.0"/>
   <arg name="second_tb3_z_pos" default=" 0.0"/>
-  <arg name="second_tb3_yaw"   default="3.14159"/>
+  <arg name="second_tb3_yaw"   default="0"/>
 
-  <arg name="third_tb3_x_pos" default="0.0"/>
-  <arg name="third_tb3_y_pos" default="7.0"/>
+  <arg name="third_tb3_x_pos" default="7.0"/>
+  <arg name="third_tb3_y_pos" default="-7.0"/>
   <arg name="third_tb3_z_pos" default="0.0"/>
-  <arg name="third_tb3_yaw"   default="-1.57079"/>
+  <arg name="third_tb3_yaw"   default="3.14159"/>
   
-  <arg name="fourth_tb3_x_pos" default="0.0"/>
-  <arg name="fourth_tb3_y_pos" default="-7.0"/>
+  <arg name="fourth_tb3_x_pos" default="7.0"/>
+  <arg name="fourth_tb3_y_pos" default="7.0"/>
   <arg name="fourth_tb3_z_pos" default="0.0"/>
-  <arg name="fourth_tb3_yaw"   default="1.57079"/>
+  <arg name="fourth_tb3_yaw"   default="3.14159"/>
   
   <!-- BEGIN ROBOT 1-->
   <group ns = "$(arg first_tb3)">
