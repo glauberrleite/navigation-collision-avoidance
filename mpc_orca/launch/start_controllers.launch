@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<launch>
+    <param name="robot_description" command="$(find xacro)/xacro '$(find gazebo_worlds)/urdf/herbie.xacro'" />
+    
+    <arg name="goal_0_x" default="7.0"/>
+    <arg name="goal_0_y" default="7.0"/>
+    <arg name="goal_1_x" default="7.0"/>
+    <arg name="goal_1_y" default="-7.0"/>
+    <arg name="goal_2_x" default="-7.0"/>
+    <arg name="goal_2_y" default="7.0"/>
+    <arg name="goal_3_x" default="-7.0"/>
+    <arg name="goal_3_y" default="-7.0"/>
+    
+    <node name="mpc_orca_controller_robot_0" pkg="mpc_orca" type="dense_controller.py" output="screen"
+          args="0 $(arg goal_0_x) $(arg goal_0_y)" />
+    
+    <node name="mpc_orca_controller_robot_1" pkg="mpc_orca" type="dense_controller.py" output="screen"
+          args="1 $(arg goal_1_x) $(arg goal_1_y)" />
+
+    <node name="mpc_orca_controller_robot_2" pkg="mpc_orca" type="dense_controller.py" output="screen"
+          args="2 $(arg goal_2_x) $(arg goal_2_y)" />
+
+    <node name="mpc_orca_controller_robot_3" pkg="mpc_orca" type="dense_controller.py" output="screen"
+          args="3 $(arg goal_3_x) $(arg goal_3_y)" />
+          
+</launch>
