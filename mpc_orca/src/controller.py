@@ -14,19 +14,19 @@ tau = 10
 N = 10
 Ts = 0.1
 X = []
-X.append(np.array([-7., 0.]))
-X.append(np.array([7., 0.]))
-X.append(np.array([0, 7.]))
-X.append(np.array([0., -7.]))
+X.append(np.array([-7., -7.]))
+X.append(np.array([-7., 7.]))
+X.append(np.array([7, -7.]))
+X.append(np.array([7., 7.]))
 orientation = [0, np.pi, -np.pi/2, np.pi/2]
 V = [[0., 0.] for _ in xrange(len(X))]
 V_min = [-1 for _ in xrange(len(X))]
 V_max = [1 for _ in xrange(len(X))]
 goal = []
-goal.append(np.array([7., 0.]))
-goal.append(np.array([-7., 0.]))
-goal.append(np.array([0., -7.]))
-goal.append(np.array([0., 7.]))
+goal.append(np.array([7., 7.]))
+goal.append(np.array([7., -7.]))
+goal.append(np.array([-7., 7.]))
+goal.append(np.array([-7., -7.]))
 model = [i+1 for i in xrange(len(X))]
 
 agents = []
@@ -45,6 +45,18 @@ def velocityTransform(v, a, theta_0):
         angular -= np.sign(angular) * 2 * np.pi
  
     return [linear, angular]
+
+def accelerationTransform(a, v, w, theta_0):
+    d = 0.05
+    cos_theta = np.cos(theta_0)
+    sin_theta = np.sin(theta_0)
+    inverse = np.linalg.inv(np.array([[cos_theta, -d * sin_theta],[sin_theta, d * cos_theta]]))
+    term1 = a[0] + v * w * sin_theta + d * (w**2) * cos_theta
+    term2 = a[1] - v * w * cos_theta + d * (w**2) * sin_theta
+    acc = np.matmul(inverse, np.vstack([term1, term2]))
+    acc = acc.T
+
+    return acc[0]
 
 def update_positions(agents):
     for i in xrange(len(X)):
@@ -88,9 +100,11 @@ setpoint_vel = Vector3()
 
 # Initializing Controllers
 controller = []
+vel = []
 for i, agent in enumerate(agents):
     colliders = agents[:i] + agents[i + 1:]
     controller.append(MPC_ORCA(agent.position, V_min[i], V_max[i], N, Ts, colliders, tau, agent.radius))
+    vel.append(Twist())
 
 # Global path planning
 initial = np.copy(X)
@@ -116,18 +130,18 @@ while not rospy.is_shutdown():
 
         # Computing optimal input values
         [agents[i].velocity, agents[i].acceleration] = controller[i].getNewVelocity(setpoint)
-        
-    
+          
         if i == 0:
             [setpoint_pos.x, setpoint_pos.y] = P_des(t, i)
 
             [setpoint_vel.x, setpoint_vel.y] = V_des(t, i)
 
     for i in xrange(len(X)):
-        vel = Twist()
-        [vel.linear.x, vel.angular.z] = velocityTransform(agents[i].velocity, agents[i].acceleration, orientation[i])
+        acc = accelerationTransform(agents[i].acceleration, vel[i].linear.x, vel[i].angular.z, orientation[i])
+        vel[i].linear.x = vel[i].linear.x + acc[0] * Ts
+        vel[i].angular.z = vel[i].angular.z + acc[1] * Ts
 
-        pub[i].publish(vel)
+        pub[i].publish(vel[i])
     
     pub_setpoint_pos.publish(setpoint_pos)
     pub_setpoint_vel.publish(setpoint_vel)

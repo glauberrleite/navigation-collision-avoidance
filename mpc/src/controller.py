@@ -30,6 +30,17 @@ def velocityTransform(v, a, theta_0):
  
     return [linear, angular]
 
+def accelerationTransform(a, v, w, theta_0):
+    d = 0.05
+    cos_theta = np.cos(theta_0)
+    sin_theta = np.sin(theta_0)
+    inverse = np.linalg.inv(np.array([[cos_theta, -d * sin_theta],[sin_theta, d * cos_theta]]))
+    term1 = a[0] + v * w * sin_theta + d * (w**2) * cos_theta
+    term2 = a[1] - v * w * cos_theta + d * (w**2) * sin_theta
+    acc = np.matmul(inverse, np.vstack([term1, term2]))
+    acc = acc.T
+
+    return acc[0]
 
 def updateWorld(msg):
     global X, orientation
@@ -68,12 +79,12 @@ V_des = lambda t: goal * d_logistic(t) - initial * d_logistic(t)
 
 t = 0
 
+vel = Twist()
 while not rospy.is_shutdown():
 
     # Updating setpoint trajectory
     setpoint = np.ravel([np.append(P_des(t + k * Ts), V_des(t + k * Ts)) for k in range(0, N + 1)])
 
-    print(V)
     # Updating initial conditions
     controller.x_0 = np.array([X[0], X[1], V[0], V[1]])
 
@@ -84,8 +95,10 @@ while not rospy.is_shutdown():
 
     [setpoint_vel.x, setpoint_vel.y] = V_des(t)
 
-    vel = Twist()
-    [vel.linear.x, vel.angular.z] = velocityTransform(V, acceleration, orientation)
+    acc = accelerationTransform(acceleration, vel.linear.x, vel.angular.z, orientation)
+
+    vel.linear.x = vel.linear.x + acc[0] * Ts
+    vel.angular.z = vel.angular.z + acc[1] * Ts
 
     pub.publish(vel)
     
