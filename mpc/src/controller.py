@@ -31,7 +31,7 @@ def velocityTransform(v, a, theta_0):
     return [linear, angular]
 
 def accelerationTransform(a, v, w, theta_0):
-    d = 0.05
+    d = 0.2
     cos_theta = np.cos(theta_0)
     sin_theta = np.sin(theta_0)
     inverse = np.linalg.inv(np.array([[cos_theta, -d * sin_theta],[sin_theta, d * cos_theta]]))
@@ -83,7 +83,7 @@ vel = Twist()
 while not rospy.is_shutdown():
 
     # Updating setpoint trajectory
-    setpoint = np.ravel([np.append(P_des(t + k * Ts), V_des(t + k * Ts)) for k in range(0, N + 1)])
+    setpoint = np.ravel([np.append(P_des(t + 0 * Ts), V_des(t + 0 * Ts)) for k in range(0, N + 1)])
 
     # Updating initial conditions
     controller.x_0 = np.array([X[0], X[1], V[0], V[1]])

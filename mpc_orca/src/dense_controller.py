@@ -5,7 +5,6 @@ import rospy
 import numpy as np
 from gazebo_msgs.msg import ModelStates
 from geometry_msgs.msg import Twist, Vector3
-from rosgraph_msgs.msg import Clock
 from MPC_ORCA import MPC_ORCA
 from pyorca import Agent
 
@@ -13,7 +12,7 @@ robot = int(sys.argv[1])
 goal = np.array([float(sys.argv[2]), float(sys.argv[3])])
 RADIUS = 0.4
 tau = 10
-N = 10
+N = 1
 Ts = 0.1
 V_min = -1
 V_max = 1
@@ -56,6 +55,22 @@ def velocityTransform(v, theta_0):
  
     return [linear, angular]
 
+def accelerationTransform(a, v, w, theta_0):
+    d = 0.2
+    cos_theta = np.cos(theta_0)
+    sin_theta = np.sin(theta_0)
+    term1 = a[0] + v * w * sin_theta + d * (w**2) * cos_theta
+    term2 = a[1] - v * w * cos_theta + d * (w**2) * sin_theta
+    #inverse = np.linalg.inv(np.array([[cos_theta, -d * sin_theta],[sin_theta, d * cos_theta]]))
+    #acc = np.matmul(inverse, np.vstack([term1, term2]))
+    #acc = acc.T
+
+    #return acc[0]
+    acc_linear = cos_theta * term1 + sin_theta * term2
+    acc_angular = -(sin_theta/d) * term1 + (cos_theta/d) * term2
+
+    return [acc_linear, acc_angular]
+
 def update_positions(agents):
     for i in range(n_robots):
         agents[i].position = np.array(X[i])
@@ -96,6 +111,7 @@ V_des = lambda t: goal * d_logistic(t) - initial * d_logistic(t)
 
 t = 0
 
+vel = Twist()
 while not rospy.is_shutdown():
 
     agents = update_positions(agents)
@@ -114,8 +130,11 @@ while not rospy.is_shutdown():
 
     [setpoint_vel.x, setpoint_vel.y] = V_des(t)
 
-    vel = Twist()
-    [vel.linear.x, vel.angular.z] = velocityTransform(agents[robot].velocity, orientation[robot])
+    acc = accelerationTransform(agents[robot].acceleration, vel.linear.x, vel.angular.z, orientation[robot])
+    vel.linear.x = vel.linear.x + acc[0] * Ts
+    vel.angular.z = vel.angular.z + acc[1] * Ts
+    
+    #[vel.linear.x, vel.angular.z] = velocityTransform(agents[robot].velocity, orientation[robot])
     
     pub.publish(vel)
     

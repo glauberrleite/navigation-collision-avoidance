@@ -47,16 +47,20 @@ def velocityTransform(v, a, theta_0):
     return [linear, angular]
 
 def accelerationTransform(a, v, w, theta_0):
-    d = 0.05
+    d = 0.2
     cos_theta = np.cos(theta_0)
     sin_theta = np.sin(theta_0)
-    inverse = np.linalg.inv(np.array([[cos_theta, -d * sin_theta],[sin_theta, d * cos_theta]]))
     term1 = a[0] + v * w * sin_theta + d * (w**2) * cos_theta
     term2 = a[1] - v * w * cos_theta + d * (w**2) * sin_theta
-    acc = np.matmul(inverse, np.vstack([term1, term2]))
-    acc = acc.T
+    #inverse = np.linalg.inv(np.array([[cos_theta, -d * sin_theta],[sin_theta, d * cos_theta]]))
+    #acc = np.matmul(inverse, np.vstack([term1, term2]))
+    #acc = acc.T
 
-    return acc[0]
+    #return acc[0]
+    acc_linear = cos_theta * term1 + sin_theta * term2
+    acc_angular = -(sin_theta/d) * term1 + (cos_theta/d) * term2
+
+    return [acc_linear, acc_angular]
 
 def update_positions(agents):
     for i in xrange(len(X)):
@@ -126,7 +130,8 @@ while not rospy.is_shutdown():
         controller[i].colliders = agents[:i] + agents[i + 1:]
 
         # Updating setpoint trajectory
-        setpoint = np.ravel([np.append(P_des(t + k * Ts, i), V_des(t + k * Ts, i)) for k in range(0, N + 1)])
+        #setpoint = np.ravel([np.append(P_des(t + k * Ts, i), V_des(t + k * Ts, i)) for k in range(0, N + 1)])
+        setpoint = np.ravel([np.append(P_des(t + 0 * Ts, i), V_des(t + 0 * Ts, i)) for k in range(0, N + 1)])
 
         # Computing optimal input values
         [agents[i].velocity, agents[i].acceleration] = controller[i].getNewVelocity(setpoint)
