@@ -62,8 +62,8 @@ class MPC_ORCA:
         x_r = x_0
 
         # MPC objective function
-        Q = sparse.diags([1.5, 1.5, 1., 1.])
-        R = 0.2 * sparse.eye(self.nu)
+        Q = sparse.diags([1.5, 1.5, 1.0, 1.0])
+        R = 1.5 * sparse.eye(self.nu)
 
         # Casting QP format
         # QP objective
@@ -113,7 +113,7 @@ class MPC_ORCA:
         self.problem = osqp.OSQP()
         self.problem.setup(P, self.q, self.A, self.l, self.u, warm_start=True, verbose=False)
 
-    def getNewVelocity(self, setpoint):
+    def compute(self, setpoint):
         # Updating initial conditions
         x_0 = numpy.array([self.agent.position[0], self.agent.position[1], self.agent.velocity[0], self.agent.velocity[1]])
         
@@ -147,8 +147,8 @@ class MPC_ORCA:
             return [result.x[(self.nx + 2):(self.nx + 4)], result.x[-self.N*self.nu:-(self.N-1)*self.nu]]
         else:
             print('unsolved')
-            #return [numpy.array([self.agent.velocity[0], self.agent.velocity[1]]), numpy.zeros(2)]
+            #return [numpy.array([self.agent.velocity[0], self.agent.velocity[1]]), self.agent.acceleration]
             damping = 0.01
-            return [numpy.array([(1-damping)*self.agent.velocity[0], (1-damping)*self.agent.velocity[1] - numpy.sign(self.agent.velocity[1])*damping]), numpy.zeros(2)]
+            return [numpy.array([self.agent.velocity[0] + (1 - damping) * self.agent.acceleration[0] * self.Ts, self.agent.velocity[1] + (1 - damping) * self.agent.acceleration[1] * self.Ts]), (1 - damping) * self.agent.acceleration]
         
     

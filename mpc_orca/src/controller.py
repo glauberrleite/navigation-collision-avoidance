@@ -1,155 +1,143 @@
 #!/usr/bin/env python2
 
+import sys
 import rospy
 import numpy as np
 from gazebo_msgs.msg import ModelStates
 from geometry_msgs.msg import Twist, Vector3
-from rosgraph_msgs.msg import Clock
 from MPC_ORCA import MPC_ORCA
 from pyorca import Agent
 
+# Reads robot index and goal values
+robot = int(sys.argv[1])
+goal = np.array([float(sys.argv[2]), float(sys.argv[3])])
+
+# Robot and controller parameters
 RADIUS = 0.4
 tau = 10
-
 N = 10
 Ts = 0.1
-X = []
-X.append(np.array([-7., -7.]))
-X.append(np.array([-7., 7.]))
-X.append(np.array([7, -7.]))
-X.append(np.array([7., 7.]))
-orientation = [0, np.pi, -np.pi/2, np.pi/2]
-V = [[0., 0.] for _ in xrange(len(X))]
-V_min = [-1 for _ in xrange(len(X))]
-V_max = [1 for _ in xrange(len(X))]
-goal = []
-goal.append(np.array([7., 7.]))
-goal.append(np.array([7., -7.]))
-goal.append(np.array([-7., 7.]))
-goal.append(np.array([-7., -7.]))
-model = [i+1 for i in xrange(len(X))]
+V_min = -1
+V_max = 1
 
-agents = []
-
-for i in xrange(len(X)):
-    agents.append(Agent(X[i], np.zeros(2), np.zeros(2), RADIUS))
-
-def velocityTransform(v, a, theta_0):
-    
-    linear = np.sqrt(v[0]**2 + v[1]**2)
-    #angular = (v[0]*a[1] - v[1]*a[0])/linear
-    angular = np.arctan2(v[1], v[0]) - theta_0 
-
-    # Handling singularity
-    if np.abs(angular) > np.pi:
-        angular -= np.sign(angular) * 2 * np.pi
- 
-    return [linear, angular]
+# Defining functions
+def updateWorld(msg):
+    """This funcion is called whenever the gazebo/model_states publishes. This function
+    updates the world variables as fast as possible"""
+    for i in range(n_robots):
+        X[i] = np.array([float(msg.pose[model[i]].position.x), float(msg.pose[model[i]].position.y)])
+        V[i] = np.array([float(msg.twist[model[i]].linear.x)/2, float(msg.twist[model[i]].linear.y)/2])
+        orientation[i] = np.arctan2(2 * float(msg.pose[model[i]].orientation.w) * float(msg.pose[model[i]].orientation.z), 1 - 2 * float(msg.pose[model[i]].orientation.z)**2)
 
 def accelerationTransform(a, v, w, theta_0):
+    """This function applies the linearization transformation on acceleration values 
+    based on equation 2.11
+    """
     d = 0.2
     cos_theta = np.cos(theta_0)
     sin_theta = np.sin(theta_0)
     term1 = a[0] + v * w * sin_theta + d * (w**2) * cos_theta
     term2 = a[1] - v * w * cos_theta + d * (w**2) * sin_theta
-    #inverse = np.linalg.inv(np.array([[cos_theta, -d * sin_theta],[sin_theta, d * cos_theta]]))
-    #acc = np.matmul(inverse, np.vstack([term1, term2]))
-    #acc = acc.T
-
-    #return acc[0]
     acc_linear = cos_theta * term1 + sin_theta * term2
     acc_angular = -(sin_theta/d) * term1 + (cos_theta/d) * term2
 
     return [acc_linear, acc_angular]
 
 def update_positions(agents):
-    for i in xrange(len(X)):
+    """Each robot has a list of all agents in its neighborhood, including itself. This 
+    function updates that list, not as fast as updateWorld().
+    """
+    for i in range(n_robots):
         agents[i].position = np.array(X[i])
+        agents[i].velocity = np.array(V[i])
     return agents
 
-def updateWorld(msg):
-    for i in xrange(len(X)):
-        X[i] = np.array([float(msg.pose[model[i]].position.x), float(msg.pose[model[i]].position.y)])
-        orientation[i] = 2 * np.arctan2(float(msg.pose[model[i]].orientation.z), float(msg.pose[model[i]].orientation.w))
-        if (orientation[i] > np.pi):
-            # For gazebo odom quaternion
-            orientation[i] = 2 * np.arctan2(-float(msg.pose[model[i]].orientation.z), -float(msg.pose[model[i]].orientation.w))
+# Initializing ros node
+rospy.init_node('mpc_orca_controller_robot_' + str(robot))
 
-rospy.init_node('diff_controller')
+# Waiting gazebo first message
+data = rospy.wait_for_message('/gazebo/model_states', ModelStates)
+
+n_robots = len(data.name) - 1
+
+X = [np.zeros(2) for _ in range(n_robots)]
+V = [np.zeros(2) for _ in range(n_robots)]
+orientation = [0.0 for _ in range(n_robots)]
+model = [i+1 for i in range(n_robots)]
 
 # Getting robot model order on gazebo model_states
-data = rospy.wait_for_message('/gazebo/model_states', ModelStates)
 for i, value in enumerate(data.name):
     # Skipping i == 0 because it's the ground_plane state
     if i > 0:
         idx = value.split('_')
         model[int(idx[1])] = i
 
+# Update initial X, V and orientation
+updateWorld(data)
+
+# Agents list
+agents = []
+for i in range(n_robots):
+    agents.append(Agent(X[i], np.zeros(2), np.zeros(2), RADIUS))
+     
 # Subscribing on model_states instead of robot/odom, to avoid unnecessary noise
 rospy.Subscriber('/gazebo/model_states', ModelStates, updateWorld)
-pub = []
 
-# Velocity publishers
-pub.append(rospy.Publisher('/robot_0/cmd_vel', Twist, queue_size=10))
-pub.append(rospy.Publisher('/robot_1/cmd_vel', Twist, queue_size=10))
-pub.append(rospy.Publisher('/robot_2/cmd_vel', Twist, queue_size=10))
-pub.append(rospy.Publisher('/robot_3/cmd_vel', Twist, queue_size=10))
+# Velocity publisher
+pub = rospy.Publisher('/robot_' + str(robot) + '/cmd_vel', Twist, queue_size=10)
 
 # Setpoint Publishers
-pub_setpoint_pos = rospy.Publisher('/setpoint_pos', Vector3, queue_size=10)
-pub_setpoint_vel = rospy.Publisher('/setpoint_vel', Vector3, queue_size=10)
+pub_setpoint_pos = rospy.Publisher('/robot_' + str(robot) + '/setpoint_pos', Vector3, queue_size=10)
+pub_setpoint_vel = rospy.Publisher('/robot_' + str(robot) + '/setpoint_vel', Vector3, queue_size=10)
 
 setpoint_pos = Vector3()
 setpoint_vel = Vector3()
 
 # Initializing Controllers
-controller = []
-vel = []
-for i, agent in enumerate(agents):
-    colliders = agents[:i] + agents[i + 1:]
-    controller.append(MPC_ORCA(agent.position, V_min[i], V_max[i], N, Ts, colliders, tau, agent.radius))
-    vel.append(Twist())
+colliders = agents[:robot] + agents[robot + 1:]
+controller = MPC_ORCA(agents[robot].position, V_min, V_max, N, Ts, colliders, tau, RADIUS)
 
 # Global path planning
-initial = np.copy(X)
-t0 = 10.0
+initial = np.copy(X[robot])
+t_max = 10.0
 growth = 0.5
-logistic = lambda t: 1/(1 + np.exp(- growth * (t - t0)))
+logistic = lambda t: 1/(1 + np.exp(- growth * (t - t_max)))
 d_logistic = lambda t: growth * logistic(t) * (1 - logistic(t))
-P_des = lambda t, i: goal[i] * logistic(t) + initial[i] * (1 - logistic(t))
-V_des = lambda t, i: goal[i] * d_logistic(t) - initial[i] * d_logistic(t)
+P_des = lambda t: goal * logistic(t) + initial * (1 - logistic(t))
+V_des = lambda t: goal * d_logistic(t) - initial * d_logistic(t)
 
 t = 0
+
+vel = Twist()
 while not rospy.is_shutdown():
-    
+
+    # Updating controller list of agents
     agents = update_positions(agents)
-
-    for i, agent in enumerate(agents):
-        # Updating controller agents
-        controller[i].agent = agents[i]
-        controller[i].colliders = agents[:i] + agents[i + 1:]
-
-        # Updating setpoint trajectory
-        #setpoint = np.ravel([np.append(P_des(t + k * Ts, i), V_des(t + k * Ts, i)) for k in range(0, N + 1)])
-        setpoint = np.ravel([np.append(P_des(t + 0 * Ts, i), V_des(t + 0 * Ts, i)) for k in range(0, N + 1)])
-
-        # Computing optimal input values
-        [agents[i].velocity, agents[i].acceleration] = controller[i].getNewVelocity(setpoint)
-          
-        if i == 0:
-            [setpoint_pos.x, setpoint_pos.y] = P_des(t, i)
-
-            [setpoint_vel.x, setpoint_vel.y] = V_des(t, i)
-
-    for i in xrange(len(X)):
-        acc = accelerationTransform(agents[i].acceleration, vel[i].linear.x, vel[i].angular.z, orientation[i])
-        vel[i].linear.x = vel[i].linear.x + acc[0] * Ts
-        vel[i].angular.z = vel[i].angular.z + acc[1] * Ts
-
-        pub[i].publish(vel[i])
+    controller.agent = agents[robot]
+    controller.colliders = agents[:robot] + agents[robot + 1:]
     
+    # Updating setpoint trajectory
+    setpoint = np.ravel([np.append(P_des(t + k * Ts), V_des(t + k * Ts)) for k in range(0, N + 1)])
+
+    # Computing optimal input values
+    [agents[robot].velocity, agents[robot].acceleration] = controller.compute(setpoint)
+
+    # Saving setpoints
+    [setpoint_pos.x, setpoint_pos.y] = P_des(t)
+    [setpoint_vel.x, setpoint_vel.y] = V_des(t)
+
+    # Linearization transformation for linear and angular acceleration
+    [acc_linear, acc_angular] = accelerationTransform(agents[robot].acceleration, vel.linear.x, vel.angular.z, orientation[robot])
+
+    # Integrating acceleration to get velocity commands
+    vel.linear.x = vel.linear.x + acc_linear * Ts
+    vel.angular.z = vel.angular.z + acc_angular * Ts
+
+    # Publishing to topics    
+    pub.publish(vel)    
     pub_setpoint_pos.publish(setpoint_pos)
     pub_setpoint_vel.publish(setpoint_vel)
-    rospy.sleep(Ts)
 
+    # Sleep until the next iteration
+    rospy.sleep(Ts)
     t += Ts
