@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<launch>
+       
+    <arg name="goal_x" default="7.0"/>
+    <arg name="goal_y" default="7.0"/>
+    <arg name="record_file" default="/home/glauberrleite/robot"/>    
+
+    <!-- Spawm robot -->
+    <node name="mpc_controller" pkg="mpc" type="controller.py" output="screen"
+        args="$(arg goal_x) $(arg goal_y)" />
+    
+    <!-- Recording -->
+    <node pkg="rosbag" type="record" name="rosbag_record_robot"
+        args="record -o $(arg record_file) /odom /cmd_vel /setpoint_pos /setpoint_vel" />
+          
+</launch>

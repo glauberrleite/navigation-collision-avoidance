@@ -1,5 +1,6 @@
 #!/usr/bin/env python2
 
+import sys
 import rospy
 import numpy as np
 from gazebo_msgs.msg import ModelStates
@@ -13,7 +14,8 @@ orientation = 0
 V = np.array([0., 0.])
 V_min = -1
 V_max = 1
-goal = np.array([7., 7.])
+
+goal = np.array([float(sys.argv[1]), float(sys.argv[2])])
 
 def velocityTransform(v, a, theta_0):
     
