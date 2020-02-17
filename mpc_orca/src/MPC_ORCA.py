@@ -129,7 +129,7 @@ class MPC_ORCA:
             for i, collider in enumerate(self.colliders):
                 collider_k = Agent(collider.position + k * collider.velocity * self.Ts, collider.velocity, numpy.zeros(2), collider.radius)
 
-                # Dicovering ORCA half-space
+                # Discovering ORCA half-space
                 v0, n = orca(agent_k, collider_k, self.tau, self.Ts)
 
                 self.A[self.orca_rows_idx + i * self.N + k, self.nx + k * self.nx + 2] = n[0]
@@ -137,7 +137,6 @@ class MPC_ORCA:
 
                 self.l[self.orca_rows_idx + i * self.N + k] = -numpy.inf
                 self.u[self.orca_rows_idx + i * self.N + k] = numpy.dot(n, v0)
-                
 
         self.problem.update(q=self.q, l=self.l, u=self.u, Ax=self.A.data)
         result = self.problem.solve()
@@ -147,8 +146,6 @@ class MPC_ORCA:
             return [result.x[(self.nx + 2):(self.nx + 4)], result.x[-self.N*self.nu:-(self.N-1)*self.nu]]
         else:
             print('unsolved')
-            #return [numpy.array([self.agent.velocity[0], self.agent.velocity[1]]), self.agent.acceleration]
             damping = 0.01
-            return [numpy.array([self.agent.velocity[0] + (1 - damping) * self.agent.acceleration[0] * self.Ts, self.agent.velocity[1] + (1 - damping) * self.agent.acceleration[1] * self.Ts]), (1 - damping) * self.agent.acceleration]
-        
-    
+            new_acceleration = (1 - damping) * self.agent.acceleration
+            return [self.agent.velocity + new_acceleration * self.Ts, new_acceleration]
