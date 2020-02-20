@@ -60,13 +60,14 @@ class MPC:
         x_r = self.x_0
 
         # MPC objective function
-        Q = sparse.diags([10.5, 10.5, 0.0, 0.0])
+        Q_0 = sparse.diags([100, 100, 0.0, 0.0])
+        Q = sparse.diags([1.5, 1.5, 0.0, 0.0])
         R = 0.5 * sparse.eye(self.nu)
 
         # Casting QP format
         # QP objective
-        P = sparse.block_diag([sparse.kron(sparse.eye(N+1), Q), sparse.kron(sparse.eye(N), R)]).tocsc()
-        self.q = numpy.hstack([numpy.kron(numpy.ones(N+1), -Q.dot(x_r)), numpy.zeros(N * self.nu)])
+        P = sparse.block_diag([Q, Q_0, sparse.kron(sparse.eye(N-1), Q), sparse.kron(sparse.eye(N), R)]).tocsc()
+        self.q = numpy.hstack([-Q.dot(x_r), -Q_0.dot(x_r), numpy.kron(numpy.ones(N-1), -Q.dot(x_r)), numpy.zeros(N * self.nu)])
 
         # QP constraints
         # - linear dynamics
@@ -93,6 +94,7 @@ class MPC:
         A = sparse.vstack([A_eq, A_N_c, A_ineq]).tocsc()
         self.l = numpy.hstack([l_eq, l_N_c, l_ineq])
         self.u = numpy.hstack([u_eq, u_N_c, u_ineq])
+        self.Q_0 = Q_0
         self.Q = Q
         self.R = R
 
@@ -102,7 +104,7 @@ class MPC:
 
     def getNewVelocity(self, setpoint):
         # Updating initial conditions        
-        self.q = numpy.hstack([numpy.dot(sparse.kron(sparse.eye(self.N+1), -self.Q).toarray(), setpoint), numpy.zeros(self.N * self.nu)])
+        self.q = numpy.hstack([-self.Q.dot(setpoint[0:self.nx]), -self.Q_0.dot(setpoint[self.nx:2*self.nx]), numpy.dot(sparse.kron(sparse.eye(self.N-1), -self.Q).toarray(), setpoint[2*self.nx:]), numpy.zeros(self.N * self.nu)])
 
         self.l[:self.nx] = -self.x_0
         self.u[:self.nx] = -self.x_0

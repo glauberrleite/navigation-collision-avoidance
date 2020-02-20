@@ -37,9 +37,9 @@ def updateStates(msg):
     global X, orientation
     X = np.array([float(msg.pose.pose.position.x), float(msg.pose.pose.position.y)])
     #V = np.array([float(msg.twist.twist.linear.x)/2, float(msg.twist.twist.linear.y)/2])
-    orientation = 2 * np.arctan2(float(msg.pose.pose.orientation.z), float(msg.pose.pose.orientation.w))
-    #orientation = np.arctan2(2 * float(msg.pose.pose.orientation.w) * float(msg.pose.pose.orientation.z), \
-    #    1 - 2 * float(msg.pose.pose.orientation.z)**2)
+    #orientation = 2 * np.arctan2(float(msg.pose.pose.orientation.z), float(msg.pose.pose.orientation.w))
+    orientation = np.arctan2(2 * float(msg.pose.pose.orientation.w) * float(msg.pose.pose.orientation.z), \
+        1 - 2 * float(msg.pose.pose.orientation.z)**2)
 
 rospy.init_node('mpc_controller')
 
@@ -71,7 +71,6 @@ V_des = lambda t: goal * d_logistic(t) - initial * d_logistic(t)
 t = 0
 
 vel = Twist()
-velo = np.zeros(2)
 while not rospy.is_shutdown():
 
     # Updating setpoint trajectory
@@ -80,7 +79,6 @@ while not rospy.is_shutdown():
     # Updating initial conditions
     controller.x_0 = np.array([X[0], X[1], V[0], V[1]])
 
-    print(np.linalg.norm(velo - V))
     # Computing optimal input values
     [V, acceleration] = controller.getNewVelocity(setpoint)
 
