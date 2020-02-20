@@ -4,7 +4,7 @@ import scipy.sparse as sparse
 
 class MPC:
 
-    def __init__(self, position, v_min, v_max, N, Ts):
+    def __init__(self, position, v_min, v_max, N, N_c, Ts):
         """ MPC-ORCA controller instance
         
         :param goal: Goal position
@@ -24,6 +24,7 @@ class MPC:
         """
 
         self.N = N
+        self.N_c = N_c
         self.Ts = Ts
 
         # Linear Dynamics
@@ -58,7 +59,7 @@ class MPC:
 
         # MPC objective function
         Q = sparse.diags([1.5, 1.5, 1.0, 1.0])
-        R = 0.2 * sparse.eye(self.nu)
+        R = 0.5 * sparse.eye(self.nu)
 
         # Casting QP format
         # QP objective
@@ -73,15 +74,23 @@ class MPC:
         l_eq = numpy.hstack([-self.x_0, numpy.zeros(N*self.nx)])
         u_eq = l_eq
 
+        # - Control horizon constraint
+        A_N_c = sparse.hstack([numpy.zeros((self.nu * (N - N_c), (N+1) * self.nx)), \
+            numpy.zeros((self.nu * (N - N_c), (N_c - 1) * self.nu)), \
+            -sparse.kron(numpy.ones(((N - N_c), 1)), sparse.eye(self.nu)), \
+            sparse.eye(self.nu * (N - N_c))])
+        l_N_c = numpy.zeros(self.nu * (N - N_c))
+        u_N_c = numpy.zeros(self.nu * (N - N_c))
+
         # - input and state constraints
         A_ineq = sparse.eye((N+1) * self.nx + N * self.nu)
         l_ineq = numpy.hstack([numpy.kron(numpy.ones(N+1), xmin), numpy.kron(numpy.ones(N), umin)])
         u_ineq = numpy.hstack([numpy.kron(numpy.ones(N+1), xmax), numpy.kron(numpy.ones(N), umax)])
 
         # OSQP constraints
-        A = sparse.vstack([A_eq, A_ineq]).tocsc()
-        self.l = numpy.hstack([l_eq, l_ineq])
-        self.u = numpy.hstack([u_eq, u_ineq])
+        A = sparse.vstack([A_eq, A_N_c, A_ineq]).tocsc()
+        self.l = numpy.hstack([l_eq, l_N_c, l_ineq])
+        self.u = numpy.hstack([u_eq, u_N_c, u_ineq])
         self.Q = Q
         self.R = R
 
@@ -101,6 +110,7 @@ class MPC:
 
         if result.info.status == 'solved':
             # return the first resulting velocity after control action
+            #print(result.x[-self.N*self.nu:])
             return [result.x[(self.nx + 2):(self.nx + 4)], result.x[-self.N*self.nu:-(self.N-1)*self.nu]]
         else:
             print('unsolved')

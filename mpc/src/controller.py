@@ -3,11 +3,12 @@
 import sys
 import rospy
 import numpy as np
-from gazebo_msgs.msg import ModelStates
+from nav_msgs.msg import Odometry
 from geometry_msgs.msg import Twist, Vector3
 from MPC import MPC
 
 N = 10
+N_c = N
 Ts = 0.1
 X = np.array([0., 0.])
 orientation = 0
@@ -44,18 +45,15 @@ def accelerationTransform(a, v, w, theta_0):
 
     return acc[0]
 
-def updateWorld(msg):
+def updateStates(msg):
     global X, orientation
-    X = np.array([float(msg.pose[1].position.x), float(msg.pose[1].position.y)])
-    orientation = 2 * np.arctan2(float(msg.pose[1].orientation.z), float(msg.pose[1].orientation.w))
-    if (orientation > np.pi):
-        # For gazebo odom quaternion
-        orientation = 2 * np.arctan2(-float(msg.pose[1].orientation.z), -float(msg.pose[1].orientation.w))
+    X = np.array([float(msg.pose.pose.position.x), float(msg.pose.pose.position.y)])
+    orientation = 2 * np.arctan2(float(msg.pose.pose.orientation.z), float(msg.pose.pose.orientation.w))
 
 rospy.init_node('mpc_controller')
 
 # Subscribing on model_states instead of robot/odom, to avoid unnecessary noise
-rospy.Subscriber('/gazebo/model_states', ModelStates, updateWorld)
+rospy.Subscriber('/odom', Odometry, updateStates)
 
 # Velocity publishers
 pub = rospy.Publisher('/cmd_vel', Twist, queue_size=10)
@@ -68,7 +66,7 @@ setpoint_pos = Vector3()
 setpoint_vel = Vector3()
 
 # Initializing Controllers
-controller = MPC(X, V_min, V_max, N, Ts)
+controller = MPC(X, V_min, V_max, N, N_c, Ts)
 
 # Global path planning
 initial = np.copy(X)
@@ -85,7 +83,7 @@ vel = Twist()
 while not rospy.is_shutdown():
 
     # Updating setpoint trajectory
-    setpoint = np.ravel([np.append(P_des(t + 0 * Ts), V_des(t + 0 * Ts)) for k in range(0, N + 1)])
+    setpoint = np.ravel([np.append(P_des(t + k * Ts), V_des(t + k * Ts)) for k in range(0, N + 1)])
 
     # Updating initial conditions
     controller.x_0 = np.array([X[0], X[1], V[0], V[1]])
