@@ -17,6 +17,8 @@ class MPC:
         :type v_max: float
         :param N: Prediction Horizon
         :type N: int
+        :param N_c: Control Horizon
+        :type N_c: int
         :param Ts: Sampling Time
         :type Ts: float
         :returns: Controller instance
@@ -58,7 +60,7 @@ class MPC:
         x_r = self.x_0
 
         # MPC objective function
-        Q = sparse.diags([1.5, 1.5, 1.0, 1.0])
+        Q = sparse.diags([10.5, 10.5, 0.0, 0.0])
         R = 0.5 * sparse.eye(self.nu)
 
         # Casting QP format

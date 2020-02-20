@@ -8,7 +8,7 @@ from geometry_msgs.msg import Twist, Vector3
 from MPC import MPC
 
 N = 10
-N_c = N
+N_c = 5
 Ts = 0.1
 X = np.array([0., 0.])
 orientation = 0
@@ -18,22 +18,10 @@ V_max = 1
 
 goal = np.array([float(sys.argv[1]), float(sys.argv[2])])
 
-def velocityTransform(v, a, theta_0):
-    
-    linear = np.sqrt(v[0]**2 + v[1]**2)
-    #angular = (v[0]*a[1] - v[1]*a[0])/(v[0]**2 + v[1]**2)
-    angular = np.arctan2(v[1], v[0]) - theta_0 
-
-    if np.abs(angular) > np.pi:
-        angular -= np.sign(angular) * 2 * np.pi
-        linear = -linear
-    if np.abs(linear) < 0.01:
-        angular = 0
-        linear = 0        
- 
-    return [linear, angular]
-
 def accelerationTransform(a, v, w, theta_0):
+    """This function applies the linearization transformation on acceleration values 
+    based on equation 2.11
+    """
     d = 0.2
     cos_theta = np.cos(theta_0)
     sin_theta = np.sin(theta_0)
@@ -48,7 +36,10 @@ def accelerationTransform(a, v, w, theta_0):
 def updateStates(msg):
     global X, orientation
     X = np.array([float(msg.pose.pose.position.x), float(msg.pose.pose.position.y)])
+    #V = np.array([float(msg.twist.twist.linear.x)/2, float(msg.twist.twist.linear.y)/2])
     orientation = 2 * np.arctan2(float(msg.pose.pose.orientation.z), float(msg.pose.pose.orientation.w))
+    #orientation = np.arctan2(2 * float(msg.pose.pose.orientation.w) * float(msg.pose.pose.orientation.z), \
+    #    1 - 2 * float(msg.pose.pose.orientation.z)**2)
 
 rospy.init_node('mpc_controller')
 
@@ -80,6 +71,7 @@ V_des = lambda t: goal * d_logistic(t) - initial * d_logistic(t)
 t = 0
 
 vel = Twist()
+velo = np.zeros(2)
 while not rospy.is_shutdown():
 
     # Updating setpoint trajectory
@@ -88,6 +80,7 @@ while not rospy.is_shutdown():
     # Updating initial conditions
     controller.x_0 = np.array([X[0], X[1], V[0], V[1]])
 
+    print(np.linalg.norm(velo - V))
     # Computing optimal input values
     [V, acceleration] = controller.getNewVelocity(setpoint)
 
