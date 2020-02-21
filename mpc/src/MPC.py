@@ -50,8 +50,8 @@ class MPC:
         # State constraints
         xmin = numpy.array([-numpy.inf, -numpy.inf, v_min, v_min])
         xmax = numpy.array([numpy.inf, numpy.inf, v_max, v_max])
-        umin = numpy.array([v_min, v_min])
-        umax = numpy.array([v_max, v_max])
+        umin = numpy.array([v_min/Ts, v_min/Ts])
+        umax = numpy.array([v_max/Ts, v_max/Ts])
 
         # Initial state
         self.x_0 = numpy.array([position[0], position[1], 0., 0.])
@@ -60,9 +60,9 @@ class MPC:
         x_r = self.x_0
 
         # MPC objective function
-        Q_0 = sparse.diags([100, 100, 0.0, 0.0])
-        Q = sparse.diags([1.5, 1.5, 0.0, 0.0])
-        R = 0.5 * sparse.eye(self.nu)
+        Q_0 = sparse.diags([100.0, 100.0, 0.0, 0.0])
+        Q = sparse.diags([1.0, 1.0, 0.0, 0.0])
+        R = 0.55 * sparse.eye(self.nu)
 
         # Casting QP format
         # QP objective
