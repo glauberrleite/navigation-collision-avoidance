@@ -3,8 +3,8 @@
 import sys
 import rospy
 import numpy as np
-from nav_msgs.msg import Odometry
 from geometry_msgs.msg import Twist, Vector3
+from gazebo_msgs.msg import ModelStates
 from MPC import MPC
 
 N = 10
@@ -33,18 +33,19 @@ def accelerationTransform(a, v, w, theta_0):
 
     return acc[0]
 
-def updateStates(msg):
-    global X, orientation
-    X = np.array([float(msg.pose.pose.position.x), float(msg.pose.pose.position.y)])
-    #V = np.array([float(msg.twist.twist.linear.x)/2, float(msg.twist.twist.linear.y)/2])
-    #orientation = 2 * np.arctan2(float(msg.pose.pose.orientation.z), float(msg.pose.pose.orientation.w))
-    orientation = np.arctan2(2 * float(msg.pose.pose.orientation.w) * float(msg.pose.pose.orientation.z), \
-        1 - 2 * float(msg.pose.pose.orientation.z)**2)
+def updateWorld(msg):
+    """This funcion is called whenever the gazebo/model_states publishes. This function
+    updates the world variables as fast as possible"""
+    global X, V, orientation
+    X = np.array([float(msg.pose[1].position.x), float(msg.pose[1].position.y)])
+    V = np.array([float(msg.twist[1].linear.x), float(msg.twist[1].linear.y)])
+    orientation = np.arctan2(2 * float(msg.pose[1].orientation.w) * float(msg.pose[1].orientation.z), \
+        1 - 2 * float(msg.pose[1].orientation.z)**2)
 
 rospy.init_node('mpc_controller')
 
 # Subscribing on model_states instead of robot/odom, to avoid unnecessary noise
-rospy.Subscriber('/odom', Odometry, updateStates)
+rospy.Subscriber('/gazebo/model_states', ModelStates, updateWorld)
 
 # Velocity publishers
 pub = rospy.Publisher('/cmd_vel', Twist, queue_size=10)
@@ -71,6 +72,7 @@ V_des = lambda t: goal * d_logistic(t) - initial * d_logistic(t)
 t = 0
 
 vel = Twist()
+
 while not rospy.is_shutdown():
 
     # Updating setpoint trajectory
@@ -80,7 +82,7 @@ while not rospy.is_shutdown():
     controller.x_0 = np.array([X[0], X[1], V[0], V[1]])
 
     # Computing optimal input values
-    [V, acceleration] = controller.getNewVelocity(setpoint)
+    [_, acceleration] = controller.getNewVelocity(setpoint)
 
     [setpoint_pos.x, setpoint_pos.y] = P_des(t)
 
@@ -92,7 +94,7 @@ while not rospy.is_shutdown():
     vel.angular.z = vel.angular.z + acc[1] * Ts
 
     pub.publish(vel)
-    
+
     pub_setpoint_pos.publish(setpoint_pos)
     pub_setpoint_vel.publish(setpoint_vel)
     rospy.sleep(Ts)
