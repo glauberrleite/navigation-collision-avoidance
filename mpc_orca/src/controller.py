@@ -14,7 +14,7 @@ goal = np.array([float(sys.argv[2]), float(sys.argv[3])])
 
 # Robot and controller parameters
 RADIUS = 0.4
-tau = 10
+tau = 5
 N = 10
 Ts = 0.1
 V_min = -1
@@ -26,7 +26,7 @@ def updateWorld(msg):
     updates the world variables as fast as possible"""
     for i in range(n_robots):
         X[i] = np.array([float(msg.pose[model[i]].position.x), float(msg.pose[model[i]].position.y)])
-        V[i] = np.array([float(msg.twist[model[i]].linear.x)/2, float(msg.twist[model[i]].linear.y)/2])
+        V[i] = np.array([float(msg.twist[model[i]].linear.x), float(msg.twist[model[i]].linear.y)])
         orientation[i] = np.arctan2(2 * float(msg.pose[model[i]].orientation.w) * float(msg.pose[model[i]].orientation.z), 1 - 2 * float(msg.pose[model[i]].orientation.z)**2)
 
 def accelerationTransform(a, v, w, theta_0):
@@ -120,7 +120,7 @@ while not rospy.is_shutdown():
     setpoint = np.ravel([np.append(P_des(t + k * Ts), V_des(t + k * Ts)) for k in range(0, N + 1)])
 
     # Computing optimal input values
-    [agents[robot].velocity, agents[robot].acceleration] = controller.compute(setpoint)
+    [_, agents[robot].acceleration] = controller.compute(setpoint)
 
     # Saving setpoints
     [setpoint_pos.x, setpoint_pos.y] = P_des(t)
