@@ -5,7 +5,7 @@ from pyorca import Agent, orca
 
 class MPC_ORCA:
 
-    def __init__(self, position, v_min, v_max, N, Ts, colliders, tau, robot_radius):
+    def __init__(self, position, v_min, v_max, N, N_c, Ts, colliders, tau, robot_radius):
         """ MPC-ORCA controller instance
         
         :param goal: Goal position
@@ -25,6 +25,7 @@ class MPC_ORCA:
         """
 
         self.N = N
+        self.N_c = N_c
         self.Ts = Ts
         self.tau = tau
 
@@ -50,10 +51,10 @@ class MPC_ORCA:
         [self.nx, self.nu] = Bd.shape
 
         # State constraints
-        xmin = numpy.array([-numpy.inf, -numpy.inf, v_min, v_min])
-        xmax = numpy.array([numpy.inf, numpy.inf, v_max, v_max])
-        umin = numpy.array([v_min/Ts, v_min/Ts])
-        umax = numpy.array([v_max/Ts, v_max/Ts])
+        xmin = numpy.array([-numpy.inf, -numpy.inf, -numpy.inf, -numpy.inf])
+        xmax = numpy.array([numpy.inf, numpy.inf, numpy.inf, numpy.inf])
+        umin = numpy.array([-numpy.inf, -numpy.inf])
+        umax = numpy.array([numpy.inf, numpy.inf])
 
         # Initial state
         x_0 = numpy.array([position[0], position[1], 0., 0.])
@@ -62,9 +63,10 @@ class MPC_ORCA:
         x_r = x_0
 
         # MPC objective function
-        Q_0 = sparse.diags([100.0, 100.0, 0.0, 0.0])
-        Q = sparse.diags([1.5, 1.5, 1.0, 1.0])
-        R = 0.5 * sparse.eye(self.nu)
+        #Q_0 = sparse.diags([100.0, 100.0, 0.0, 0.0])
+        Q_0 = sparse.diags([3, 3, 0.0, 0.0])
+        Q = sparse.diags([1.5, 1.5, 0.0, 0.0])
+        R = 1.5 * sparse.eye(self.nu)
 
         # Casting QP format
         # QP objective
@@ -78,6 +80,14 @@ class MPC_ORCA:
         A_eq = sparse.hstack([Ax, Bu])
         l_eq = numpy.hstack([-x_0, numpy.zeros(N*self.nx)])
         u_eq = l_eq
+
+        # - Control horizon constraint
+        A_N_c = sparse.hstack([numpy.zeros((self.nu * (N - N_c), (N+1) * self.nx)), \
+            numpy.zeros((self.nu * (N - N_c), (N_c - 1) * self.nu)), \
+            -sparse.kron(numpy.ones(((N - N_c), 1)), sparse.eye(self.nu)), \
+            sparse.eye(self.nu * (N - N_c))])
+        l_N_c = numpy.zeros(self.nu * (N - N_c))
+        u_N_c = numpy.zeros(self.nu * (N - N_c))
 
         # - input and state constraints
         A_ineq = sparse.eye((N+1) * self.nx + N * self.nu)
@@ -102,18 +112,18 @@ class MPC_ORCA:
         u_ORCA = numpy.zeros(len(colliders) * N)
 
         # OSQP constraints
-        self.A = sparse.vstack([A_eq, A_ineq, A_ORCA]).tocsc()
-        self.l = numpy.hstack([l_eq, l_ineq, l_ORCA])
-        self.u = numpy.hstack([u_eq, u_ineq, u_ORCA])
+        self.A = sparse.vstack([A_eq, A_N_c, A_ineq, A_ORCA]).tocsc()
+        self.l = numpy.hstack([l_eq, l_N_c, l_ineq, l_ORCA])
+        self.u = numpy.hstack([u_eq, u_N_c, u_ineq, u_ORCA])
         self.Q_0 = Q_0
         self.Q = Q
         self.R = R
 
-        self.orca_rows_idx = A_eq.shape[0] + A_ineq.shape[0]
+        self.orca_rows_idx = A_eq.shape[0] + A_N_c.shape[0] +  A_ineq.shape[0]
 
         # Setting problem
         self.problem = osqp.OSQP()
-        self.problem.setup(P, self.q, self.A, self.l, self.u, warm_start=False, verbose=False)
+        self.problem.setup(P, self.q, self.A, self.l, self.u, warm_start=True, verbose=False)
 
     def compute(self, setpoint):
         # Updating initial conditions
@@ -147,7 +157,8 @@ class MPC_ORCA:
             # return the first resulting velocity after control action
             return [result.x[(self.nx + 2):(self.nx + 4)], result.x[-self.N*self.nu:-(self.N-1)*self.nu]]
         else:
-            print('unsolved')
-            damping = 0.1
+            print(result.info.status)
+            
+            damping = 3
             new_acceleration = (1 - damping) * self.agent.acceleration
             return [self.agent.velocity + new_acceleration * self.Ts, new_acceleration]

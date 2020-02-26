@@ -16,6 +16,7 @@ goal = np.array([float(sys.argv[2]), float(sys.argv[3])])
 RADIUS = 0.4
 tau = 5
 N = 10
+N_c = N
 Ts = 0.1
 V_min = -1
 V_max = 1
@@ -95,7 +96,7 @@ setpoint_vel = Vector3()
 
 # Initializing Controllers
 colliders = agents[:robot] + agents[robot + 1:]
-controller = MPC_ORCA(agents[robot].position, V_min, V_max, N, Ts, colliders, tau, RADIUS)
+controller = MPC_ORCA(agents[robot].position, V_min, V_max, N, N_c, Ts, colliders, tau, RADIUS)
 
 # Global path planning
 initial = np.copy(X[robot])
