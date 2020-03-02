@@ -18,8 +18,8 @@ tau = 5
 N = 10
 N_c = N
 Ts = 0.1
-V_min = -1
-V_max = 1
+V_min = -5
+V_max = 5
 
 # Defining functions
 def updateWorld(msg):

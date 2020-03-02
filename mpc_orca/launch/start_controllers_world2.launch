@@ -24,10 +24,10 @@
             args="3 $(arg goal_3_x) $(arg goal_3_y)" />
 
       <!-- Recording -->
-      <!--<node pkg="rosbag" type="record" name="rosbag_record_robot"
+      <node pkg="rosbag" type="record" name="rosbag_record_robot"
             args="record -o $(arg record_file) /robot_0/odom /robot_0/cmd_vel /robot_0/setpoint_pos /robot_0/setpoint_vel 
             /robot_1/odom /robot_1/cmd_vel /robot_1/setpoint_pos /robot_1/setpoint_vel 
             /robot_2/odom /robot_2/cmd_vel /robot_2/setpoint_pos /robot_2/setpoint_vel 
-            /robot_3/odom /robot_3/cmd_vel /robot_3/setpoint_pos /robot_3/setpoint_vel" />-->
+            /robot_3/odom /robot_3/cmd_vel /robot_3/setpoint_pos /robot_3/setpoint_vel" />
           
 </launch>

@@ -51,8 +51,8 @@ class MPC_ORCA:
         [self.nx, self.nu] = Bd.shape
 
         # State constraints
-        xmin = numpy.array([-numpy.inf, -numpy.inf, -numpy.inf, -numpy.inf])
-        xmax = numpy.array([numpy.inf, numpy.inf, numpy.inf, numpy.inf])
+        xmin = numpy.array([-numpy.inf, -numpy.inf, v_min, v_min])
+        xmax = numpy.array([numpy.inf, numpy.inf, v_max, v_max])
         umin = numpy.array([-numpy.inf, -numpy.inf])
         umax = numpy.array([numpy.inf, numpy.inf])
 
