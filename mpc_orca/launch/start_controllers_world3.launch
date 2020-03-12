@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<launch>
+      
+      <arg name="goal_0_x" default="7.0"/>
+      <arg name="goal_0_y" default="0.0"/>
+      <arg name="goal_1_x" default="-7.0"/>
+      <arg name="goal_1_y" default="0.0"/>
+      <arg name="goal_2_x" default="0.0"/>
+      <arg name="goal_2_y" default="7.0"/>
+      <arg name="goal_3_x" default="0.0"/>
+      <arg name="goal_3_y" default="-7.0"/>
+      <arg name="record_file" default="/home/glauberrleite/robot"/>   
+    
+      <node name="mpc_orca_controller_robot_0" pkg="mpc_orca" type="controller.py" output="screen"
+            args="0 $(arg goal_0_x) $(arg goal_0_y)" />
+
+      <node name="mpc_orca_controller_robot_1" pkg="mpc_orca" type="controller.py" output="screen"
+            args="1 $(arg goal_1_x) $(arg goal_1_y)" />
+
+      <node name="mpc_orca_controller_robot_2" pkg="mpc_orca" type="controller.py" output="screen"
+            args="2 $(arg goal_2_x) $(arg goal_2_y)" />
+
+      <node name="mpc_orca_controller_robot_3" pkg="mpc_orca" type="controller.py" output="screen"
+            args="3 $(arg goal_3_x) $(arg goal_3_y)" />
+
+      <!-- Recording -->
+      <node pkg="rosbag" type="record" name="rosbag_record_robot"
+            args="record -o $(arg record_file) /robot_0/odom /robot_0/cmd_vel /robot_0/setpoint_pos /robot_0/setpoint_vel 
+            /robot_1/odom /robot_1/cmd_vel /robot_1/setpoint_pos /robot_1/setpoint_vel 
+            /robot_2/odom /robot_2/cmd_vel /robot_2/setpoint_pos /robot_2/setpoint_vel 
+            /robot_3/odom /robot_3/cmd_vel /robot_3/setpoint_pos /robot_3/setpoint_vel" />
+          
+</launch>
