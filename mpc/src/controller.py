@@ -13,8 +13,8 @@ Ts = 0.1
 X = np.array([0., 0.])
 orientation = 0
 V = np.array([0., 0.])
-V_min = -1
-V_max = 1
+V_min = -5
+V_max = 5
 
 goal = np.array([float(sys.argv[1]), float(sys.argv[2])])
 
